@@ -18,7 +18,7 @@
 AIキャラクター「まお」がYouTubeで自律的にライブ配信を行うシステムです。
 人間は配信を開始するだけ。話題選択、感情表現、音声合成、映像生成まで全てAIが自律的に行います。
 
-**デモ:** [YouTube チャンネル](https://youtube.com/) (Coming Soon)
+**デモ:** [YouTube 初回配信アーカイブ](https://youtube.com/live/XKmC0gpTC04)
 
 ### ✨ 特徴
 
