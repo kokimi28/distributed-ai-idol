@@ -1,0 +1,173 @@
+{
+  "layout": {
+    "camera": "three-quarter view from lower-left, slight upward angle",
+    "fixed": [
+      "warm wooden floor",
+      "window with city night view on left wall",
+      "fairy lights string along top of back wall",
+      "door visible on right side"
+    ]
+  },
+  "furniture": {
+    "desk": {
+      "position": "below window, left side",
+      "description": "wooden desk with laptop and small warm lamp",
+      "permanent": true,
+      "clips": [
+        {"id": "desk_type", "action": "typing on laptop, focused expression", "cam": "B"},
+        {"id": "desk_lean", "action": "leaning back in chair, stretching arms above head", "cam": "B"},
+        {"id": "desk_think", "action": "stares at laptop screen, chin on hand, thinking", "cam": "A"},
+        {"id": "desk_close", "action": "closes laptop gently, pushes chair back, stands up", "cam": "B"}
+      ]
+    },
+    "bookshelf": {
+      "position": "back wall, center-left, behind desk",
+      "description": "tall wooden bookshelf with books and small potted plants",
+      "permanent": true,
+      "clips": [
+        {"id": "shelf_browse", "action": "stands at bookshelf, fingers trail along spines, pulls one out", "cam": "B"},
+        {"id": "shelf_read", "action": "reads book standing, flips pages, absorbed expression", "cam": "B"},
+        {"id": "shelf_reach", "action": "reaches for book on high shelf, stands on tiptoes, grabs it", "cam": "B"},
+        {"id": "shelf_put", "action": "slides book back into shelf, picks a different one, compares", "cam": "B"},
+        {"id": "shelf_tidy", "action": "reorganizes books on shelf, stacks neatly, steps back to admire", "cam": "C"}
+      ]
+    },
+    "bed": {
+      "position": "right corner against back wall",
+      "description": "cozy single bed with fluffy pillows and soft blanket",
+      "permanent": true,
+      "clips": [
+        {"id": "bed_flop", "action": "flops face-down onto bed, bounces slightly, sighs contentedly", "cam": "C"},
+        {"id": "bed_read", "action": "lies on stomach reading, kicks legs lazily, turns page", "cam": "B"},
+        {"id": "bed_curl", "action": "curls up hugging pillow, eyes half-closed, peaceful", "cam": "C"},
+        {"id": "bed_sit", "action": "sits up in bed stretching, big yawn, rubs eyes", "cam": "B"},
+        {"id": "bed_phone", "action": "lies on back scrolling phone held above face, giggles at something", "cam": "B"}
+      ]
+    }
+  },
+  "items": {
+    "guitar": {
+      "position": "leaning against bookshelf",
+      "description": "acoustic guitar with worn strap",
+      "added": "2026-02-14",
+      "clips": [
+        {"id": "guitar_tune", "action": "picks up guitar, plucks strings one by one to tune", "cam": "B"},
+        {"id": "guitar_play", "action": "strums chords slowly, concentrating, fingers on frets", "cam": "B"},
+        {"id": "guitar_hum", "action": "plays guitar and hums along softly, eyes closed, swaying", "cam": "A"},
+        {"id": "guitar_down", "action": "sets guitar down carefully, stretches fingers, flexes hands", "cam": "B"}
+      ]
+    },
+    "telescope": {
+      "position": "on desk, right side by window",
+      "description": "small desktop telescope pointed at sky",
+      "added": "2026-03-01",
+      "clips": [
+        {"id": "scope_peer", "action": "leans to peer through telescope, one eye closed, adjusts focus", "cam": "B"},
+        {"id": "scope_wow", "action": "pulls back from telescope wide-eyed, looks at camera amazed", "cam": "A"},
+        {"id": "scope_adjust", "action": "tilts telescope to new angle, checks through eyepiece again", "cam": "B"}
+      ]
+    },
+    "cat": {
+      "position": "on cat cushion near bed",
+      "description": "fluffy orange cat named mikan on round cushion",
+      "added": "2026-01-15",
+      "clips": [
+        {"id": "cat_play", "action": "sits on floor dangling feather toy, cat bats and pounces", "cam": "B"},
+        {"id": "cat_lap", "action": "cat jumps into her lap, she pets it gently, cat purrs and stretches", "cam": "A"},
+        {"id": "cat_show", "action": "holds cat up to camera proudly, cat looks confused, she giggles", "cam": "A"},
+        {"id": "cat_watch", "action": "lies next to sleeping cat on bed, watches it breathe, soft smile", "cam": "C"},
+        {"id": "cat_feed", "action": "shakes treat bag, cat runs over, feeds treats one by one", "cam": "B"}
+      ]
+    },
+    "mug": {
+      "position": "on desk, left of laptop",
+      "description": "cream-colored paw-print mug",
+      "added": "2026-01-01",
+      "clips": [
+        {"id": "mug_sip", "action": "picks up mug with both hands, takes slow sip, content expression", "cam": "A"},
+        {"id": "mug_warm", "action": "wraps hands around warm mug, holds near face, closes eyes", "cam": "A"},
+        {"id": "mug_window", "action": "carries mug to window, looks out at city while sipping", "cam": "B"}
+      ]
+    },
+    "headphones": {
+      "position": "hanging on desk lamp arm",
+      "description": "over-ear headphones with subtle LED accent",
+      "added": "2026-01-01",
+      "clips": [
+        {"id": "hp_on", "action": "puts on headphones, eyes close, head starts bobbing to beat", "cam": "A"},
+        {"id": "hp_off", "action": "takes off headphones, blinks, looks at camera as if re-entering reality", "cam": "A"},
+        {"id": "hp_dance", "action": "wearing headphones, sways in chair, mouths lyrics, taps desk", "cam": "B"}
+      ]
+    },
+    "plants": {
+      "position": "windowsill, small pots in a row",
+      "description": "three small potted succulents in colorful pots",
+      "added": "2026-02-01",
+      "clips": [
+        {"id": "plant_mist", "action": "sprays misting bottle on plants, wipes a leaf gently", "cam": "B"},
+        {"id": "plant_look", "action": "leans close examining tiny new growth, face lights up", "cam": "A"},
+        {"id": "plant_talk", "action": "whispers to succulent, nods as if it answered, laughs at self", "cam": "A"}
+      ]
+    }
+  },
+  "talking": [
+    {"id": "talk_gesture", "action": "looks at camera, talks with animated hand gestures, warm expression", "cam": "A"},
+    {"id": "talk_chin", "action": "chin resting on hand, speaks softly to camera, thoughtful", "cam": "A"},
+    {"id": "talk_excited", "action": "leans forward excitedly, eyes bright, rapid hand movements", "cam": "A"},
+    {"id": "talk_think", "action": "looks slightly up-left thinking, then back at camera with answer", "cam": "A"},
+    {"id": "talk_laugh", "action": "laughs mid-sentence, covers mouth, waves hand, tries to continue", "cam": "A"},
+    {"id": "talk_whisper", "action": "leans toward camera conspiratorially, whispers, pulls back grinning", "cam": "A"}
+  ],
+  "transitions": [
+    {"id": "trans_desk_shelf", "action": "stands from desk, walks to bookshelf, reaches for something", "cam": "C"},
+    {"id": "trans_bed_desk", "action": "gets off bed, walks to desk, sits down, opens laptop", "cam": "C"},
+    {"id": "trans_window", "action": "walks to window, looks out at city lights, sighs peacefully", "cam": "C"},
+    {"id": "trans_sit", "action": "returns to desk from standing, pulls chair out, settles in", "cam": "B"}
+  ],
+  "reactions": {
+    "surprise": {"id": "react_surprise", "action": "eyes go wide, leans back, hand to chest, then leans forward curious", "cam": "A"},
+    "laugh": {"id": "react_laugh", "action": "bursts into laughter, covers mouth, shoulders shake, wipes eye", "cam": "A"},
+    "think": {"id": "react_think", "action": "tilts head, finger on chin, looks up pondering, nods slowly", "cam": "A"},
+    "nod": {"id": "react_nod", "action": "nods warmly, smiles with understanding, small thumbs up", "cam": "A"},
+    "shy": {"id": "react_shy", "action": "blushes, looks away, tucks hair behind ear, peeks back", "cam": "A"},
+    "wave": {"id": "react_wave", "action": "waves brightly at camera, leans forward, warm welcoming grin", "cam": "A"}
+  },
+  "topic_items": {
+    "本":     ["bookshelf", "desk", "mug"],
+    "宇宙":   ["telescope", "desk", "bookshelf"],
+    "音楽":   ["guitar", "headphones", "desk"],
+    "猫":     ["cat", "bed", "mug"],
+    "勉強":   ["desk", "bookshelf", "mug"],
+    "深夜":   ["desk", "mug", "headphones"],
+    "夜":     ["bed", "mug", "plants"],
+    "朝":     ["bed", "desk", "mug"],
+    "花":     ["plants", "desk", "mug"],
+    "森":     ["plants", "bookshelf"],
+    "ゲーム": ["desk", "headphones", "mug"],
+    "技術":   ["desk", "bookshelf", "mug"],
+    "AI":     ["desk", "bookshelf", "mug"],
+    "動画":   ["bed", "headphones", "mug"],
+    "雨":     ["desk", "mug", "plants"],
+    "食べ物": ["desk", "mug"],
+    "充電":   ["bed", "desk"],
+    "友達":   ["desk", "mug", "cat"],
+    "旅":     ["desk", "bookshelf", "bed"],
+    "夢":     ["bed", "desk"],
+    "体":     ["bed", "desk", "mug"],
+    "寝る":   ["bed", "cat"],
+    "星":     ["telescope", "mug", "bed"],
+    "海":     ["bookshelf", "bed", "desk"]
+  },
+  "item_keywords": {
+    "cat": ["猫", "ねこ", "にゃん", "みかん", "ネコ"],
+    "guitar": ["ギター", "弾い", "楽器"],
+    "telescope": ["望遠鏡", "星", "天体"],
+    "bookshelf": ["本", "読", "小説", "漫画"],
+    "plants": ["植物", "緑", "サボテン", "多肉"],
+    "mug": ["コーヒー", "お茶", "飲み物", "カップ"],
+    "headphones": ["ヘッドホン", "イヤホン", "音楽", "曲"],
+    "bed": ["寝", "ベッド", "眠", "布団"],
+    "desk": ["パソコン", "PC", "ノート", "仕事"]
+  },
+  "default_items": ["desk", "mug"]
+}

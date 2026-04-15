@@ -1,0 +1,276 @@
+<!-- overlay/ai_hud.html - AI思考HUD -->
+<!-- OBS Browser Source: 1920x1080, 最前面付近 -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;background:transparent;
+  font-family:'M PLUS Rounded 1c',sans-serif}
+</style>
+</head>
+<body>
+
+<!-- 思考キーワード用コンテナ -->
+<div id="thought-container"></div>
+<!-- 感情レーダー -->
+<canvas id="radar" width="180" height="180"></canvas>
+<!-- 話題ライフサイクル -->
+<div id="lifecycle"></div>
+<!-- 処理パルス -->
+<canvas id="pulse" width="200" height="60"></canvas>
+
+<style>
+#thought-container{position:fixed;top:80px;left:30px;
+  width:700px;height:500px;pointer-events:none;overflow:hidden}
+.thought-bubble{position:absolute;
+  padding:4px 14px;border-radius:20px;
+  color:rgba(255,255,255,0.85);font-size:15px;font-weight:400;
+  white-space:nowrap;pointer-events:none;
+  animation:thoughtFloat 8s ease-out forwards;
+  letter-spacing:0.5px}
+
+@keyframes thoughtFloat{
+  0%{opacity:0;transform:translateY(20px) scale(0.8)}
+  10%{opacity:0.9;transform:translateY(0) scale(1)}
+  70%{opacity:0.7;transform:translateY(-40px) translateX(30px) scale(0.95)}
+  100%{opacity:0;transform:translateY(-80px) translateX(50px) scale(0.85)}
+}
+#radar{position:fixed;bottom:100px;right:40px;
+  width:180px;height:180px;pointer-events:none}
+#lifecycle{position:fixed;top:70px;left:30px;
+  display:flex;align-items:center;gap:6px;
+  padding:6px 16px;
+  background:rgba(20,20,30,0.6);border-radius:20px;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  opacity:0;transition:opacity 0.5s ease}
+#lifecycle.show{opacity:1}
+.lc-dot{width:8px;height:8px;border-radius:50%;
+  background:rgba(255,255,255,0.2);transition:all 0.4s ease}
+.lc-dot.active{background:rgba(180,140,255,0.9);
+  box-shadow:0 0 8px rgba(180,140,255,0.5)}
+.lc-dot.past{background:rgba(180,140,255,0.4)}
+.lc-label{color:rgba(255,255,255,0.5);font-size:10px;
+  margin-left:8px;letter-spacing:1px}
+#pulse{position:fixed;bottom:40px;left:50px;
+  width:200px;height:60px;pointer-events:none}
+</style>
+
+<script>
+const WS_URL='ws://127.0.0.1:8765';
+let ws=null;
+let emo={joy:40,sadness:0,anger:0,surprise:0,affection:50,
+  fear:0,tension:40,loneliness:0,fatigue:0};
+let targetEmo={...emo};
+let currentPhase='';
+let pulseSpeed=0.03;
+let pulseFrame=0;
+
+const PHASES=['INTRO','DEVELOP','DEEPEN','BRANCH','DECAY','TRANSIT'];
+const EMO_KEYS=['joy','tension','affection','sadness','loneliness'];
+const EMO_LABELS=['joy','ten','aff','sad','lone'];
+const EMO_COLORS=['#EF9F27','#E24B4A','#ED93B1','#85B7EB','#7F77DD'];
+
+function extractKeywords(text) {
+  let clean = text.replace(/【[^】]+】/g,'').replace(/\n/g,' ');
+  let words = clean.split(/[、。！？\s…]+/).filter(w=>w.length>=2 && w.length<=12);
+  let keywords = [];
+  const stopwords = ['なんか','てかさ','でもさ','いやさ','あのさ','えーっと',
+    'んー','ふふ','あはは','まあ','じゃん','だよね','かも','っていうか',
+    'みたいな','ていうか','それ','これ','あれ','ここ','そこ','どこ'];
+  for (let w of words) {
+    let isStop = false;
+    for (let s of stopwords) { if (w.includes(s)) { isStop=true; break; } }
+    if (!isStop && w.length >= 2) keywords.push(w);
+  }
+  return keywords.slice(0, 5);
+}
+
+const BUBBLE_COLORS = [
+  'rgba(180,140,255,0.25)','rgba(140,200,255,0.2)',
+  'rgba(255,180,200,0.2)','rgba(140,255,200,0.2)',
+  'rgba(255,220,140,0.2)',
+];
+let bubbleCount = 0;
+
+function spawnThought(word) {
+  const container = document.getElementById('thought-container');
+  const el = document.createElement('div');
+  el.className = 'thought-bubble';
+  el.textContent = word;
+  const ci = bubbleCount % BUBBLE_COLORS.length;
+  el.style.background = BUBBLE_COLORS[ci];
+  el.style.border = '1px solid ' + BUBBLE_COLORS[ci].replace('0.2','0.4').replace('0.25','0.45');
+  el.style.left = (50 + Math.random()*400) + 'px';
+  el.style.top = (100 + Math.random()*300) + 'px';
+  el.style.animationDuration = (6 + Math.random()*4) + 's';
+  el.style.animationDelay = (bubbleCount * 0.6) + 's';
+  container.appendChild(el);
+  bubbleCount++;
+  setTimeout(() => { if(el.parentNode) el.remove(); }, 12000);
+}
+
+function onSubtitle(text) {
+  const kws = extractKeywords(text);
+  bubbleCount = 0;
+  for (const kw of kws) spawnThought(kw);
+}
+
+function drawRadar() {
+  const c = document.getElementById('radar');
+  const ctx = c.getContext('2d');
+  const W=180, H=180, cx=90, cy=85, r=55;
+  ctx.clearRect(0,0,W,H);
+  const n = EMO_KEYS.length;
+  const angleStep = (Math.PI*2) / n;
+  const startAngle = -Math.PI/2;
+  for (let ring=1; ring<=3; ring++) {
+    ctx.beginPath();
+    const rr = r * ring/3;
+    for (let i=0; i<=n; i++) {
+      const a = startAngle + angleStep * (i%n);
+      const x = cx + Math.cos(a)*rr;
+      const y = cy + Math.sin(a)*rr;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  }
+
+  for (let i=0; i<n; i++) {
+    const a = startAngle + angleStep*i;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r);
+    ctx.strokeStyle='rgba(255,255,255,0.06)';
+    ctx.lineWidth=0.5; ctx.stroke();
+  }
+  ctx.beginPath();
+  for (let i=0; i<=n; i++) {
+    const a = startAngle + angleStep*(i%n);
+    const key = EMO_KEYS[i%n];
+    const val = Math.max(5, emo[key]||0) / 100;
+    const x = cx + Math.cos(a)*r*val;
+    const y = cy + Math.sin(a)*r*val;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.fillStyle='rgba(180,140,255,0.15)';
+  ctx.fill();
+  ctx.strokeStyle='rgba(180,140,255,0.6)';
+  ctx.lineWidth=1.5; ctx.stroke();
+
+  for (let i=0; i<n; i++) {
+    const a = startAngle + angleStep*i;
+    const val = Math.max(5, emo[EMO_KEYS[i]]||0)/100;
+    const x = cx+Math.cos(a)*r*val;
+    const y = cy+Math.sin(a)*r*val;
+    ctx.beginPath();
+    ctx.arc(x,y,3,0,Math.PI*2);
+    ctx.fillStyle=EMO_COLORS[i];
+    ctx.fill();
+    const lx = cx+Math.cos(a)*(r+14);
+    const ly = cy+Math.sin(a)*(r+14);
+    ctx.fillStyle='rgba(255,255,255,0.4)';
+    ctx.font='10px "M PLUS Rounded 1c",sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(EMO_LABELS[i], lx, ly);
+  }
+}
+
+function updateLifecycle(phase) {
+  if (!phase || phase === currentPhase) return;
+  currentPhase = phase;
+  const lc = document.getElementById('lifecycle');
+  lc.innerHTML = '';
+  const idx = PHASES.indexOf(phase);
+  if (idx < 0) { lc.classList.remove('show'); return; }
+  for (let i=0; i<PHASES.length; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'lc-dot';
+    if (i < idx) dot.classList.add('past');
+    if (i === idx) dot.classList.add('active');
+    lc.appendChild(dot);
+  }
+  const label = document.createElement('span');
+  label.className = 'lc-label';
+  label.textContent = phase;
+  lc.appendChild(label);
+  lc.classList.add('show');
+}
+
+function drawPulse() {
+  const c = document.getElementById('pulse');
+  const ctx = c.getContext('2d');
+  const W=200, H=60;
+  ctx.clearRect(0,0,W,H);
+  pulseFrame++;
+  const excitement = ((emo.tension||0)+(emo.joy||0)+(emo.surprise||0))/300;
+  pulseSpeed = 0.02 + excitement*0.04;
+  const amp = 8 + excitement*15;
+  ctx.beginPath();
+  for (let x=0; x<W; x++) {
+    const t = x/W * Math.PI*4 + pulseFrame*pulseSpeed;
+    const y = H/2 + Math.sin(t)*amp*Math.sin(x/W*Math.PI);
+    if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  const alpha = 0.3 + excitement*0.4;
+  ctx.strokeStyle=`rgba(180,140,255,${alpha})`;
+  ctx.lineWidth=1.5;
+  ctx.stroke();
+  ctx.beginPath();
+  for (let x=0; x<W; x++) {
+    const t = x/W*Math.PI*3 + pulseFrame*pulseSpeed*0.7+1;
+    const y = H/2 + Math.sin(t)*(amp*0.5)*Math.sin(x/W*Math.PI);
+    if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.strokeStyle=`rgba(140,200,255,${alpha*0.4})`;
+  ctx.lineWidth=0.8;
+  ctx.stroke();
+}
+
+function lerp(a,b,t){return a+(b-a)*t}
+function render() {
+  for(const k of Object.keys(emo)) {
+    if(targetEmo[k]!==undefined) emo[k]=lerp(emo[k],targetEmo[k],0.05);
+  }
+  drawRadar();
+  drawPulse();
+  requestAnimationFrame(render);
+}
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => console.log('AI HUD: WS connected');
+  ws.onclose = () => { setTimeout(connect, 2000); };
+  ws.onerror = () => {};
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'state_update') {
+        targetEmo = msg.emotions || targetEmo;
+        if (msg.phase) updateLifecycle(msg.phase);
+      }
+      else if (msg.type === 'subtitle') {
+        onSubtitle(msg.text);
+        if (msg.phase) updateLifecycle(msg.phase);
+      }
+      else if (msg.type === 'phase_change') {
+        updateLifecycle(msg.phase);
+      }
+      else if (msg.type === 'topic_change') {
+        if (msg.keywords && msg.keywords.length > 0) {
+          bubbleCount = 0;
+          for (const kw of msg.keywords.slice(0,3)) spawnThought(kw);
+        }
+      }
+    } catch(err){}
+  };
+}
+connect();
+render();
+</script>
+</body>
+</html>

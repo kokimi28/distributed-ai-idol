@@ -1,0 +1,240 @@
+<!-- overlay/thought_web.html - 連想ネットワーク（画面中央のメインビジュアル） -->
+<!-- OBS Browser Source: 1920x1080, アバターの後ろ、アンビエントの上 -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+*{margin:0;padding:0}
+body{overflow:hidden;background:transparent;
+  font-family:'M PLUS Rounded 1c',sans-serif}
+canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<script>
+const WS_URL='ws://127.0.0.1:8765';
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+let W,H;
+function resize(){W=canvas.width=1920;H=canvas.height=1080;}
+resize();
+
+const COLORS=[
+  {h:270,s:70,l:70}, // purple
+  {h:200,s:60,l:65}, // blue
+  {h:330,s:60,l:70}, // pink
+  {h:160,s:50,l:60}, // teal
+  {h:40,s:70,l:65},  // amber
+];
+
+class Node {
+  constructor(word,x,y){
+    this.word=word;
+    this.x=x||300+Math.random()*600;
+    this.y=y||200+Math.random()*400;
+    this.vx=0;this.vy=0;
+    this.targetX=this.x;this.targetY=this.y;
+    this.radius=0;this.targetRadius=18+word.length*2;
+    this.color=COLORS[Math.floor(Math.random()*COLORS.length)];
+    this.alpha=0;this.targetAlpha=0.85;
+    this.glowAlpha=1.0;
+    this.age=0;this.lastActive=0;
+    this.connections=0;
+  }
+}
+
+class Edge {
+  constructor(a,b){
+    this.a=a;this.b=b;
+    this.strength=0;this.targetStrength=0.6;
+    this.age=0;
+  }
+}
+
+let nodes=[];
+let edges=[];
+let frame=0;
+const MAX_NODES=25;
+const STOPWORDS=['なんか','てかさ','でもさ','えーっと','んー','ふふ',
+  'あはは','まあ','じゃん','だよね','かも','っていうか','みたいな',
+  'それ','これ','あれ','ここ','そこ','どこ','ていうか','いやさ',
+  'あのさ','わたし','なんだろ','だけど','っぽい'];
+
+function extractWords(text){
+  let clean=text.replace(/【[^】]+】/g,'').replace(/\n/g,' ');
+  let words=clean.split(/[、。！？…\s「」]+/).filter(w=>w.length>=2&&w.length<=10);
+  let result=[];
+  for(let w of words){
+    let stop=false;
+    for(let s of STOPWORDS){if(w.includes(s)){stop=true;break;}}
+    if(!stop&&w.length>=2) result.push(w);
+  }
+  return [...new Set(result)].slice(0,6);
+}
+
+function findNode(word){return nodes.find(n=>n.word===word);}
+
+function addWords(words){
+  let newNodes=[];
+  for(let w of words){
+    let existing=findNode(w);
+    if(existing){
+      existing.glowAlpha=1.0;
+      existing.lastActive=frame;
+      existing.targetAlpha=0.9;
+      newNodes.push(existing);
+    } else {
+      if(nodes.length>=MAX_NODES){
+        let oldest=nodes.reduce((a,b)=>a.lastActive<b.lastActive?a:b);
+        removeNode(oldest);
+      }
+      let cx=400+Math.random()*500;
+      let cy=200+Math.random()*400;
+      let n=new Node(w,cx,cy);
+      n.lastActive=frame;
+      nodes.push(n);
+      newNodes.push(n);
+    }
+  }
+  for(let i=0;i<newNodes.length;i++){
+    for(let j=i+1;j<newNodes.length;j++){
+      addEdge(newNodes[i],newNodes[j]);
+    }
+  }
+}
+
+function addEdge(a,b){
+  let existing=edges.find(e=>(e.a===a&&e.b===b)||(e.a===b&&e.b===a));
+  if(existing){existing.targetStrength=Math.min(1,existing.targetStrength+0.2);return;}
+  let e=new Edge(a,b);
+  edges.push(e);
+  a.connections++;b.connections++;
+}
+
+function removeNode(n){
+  edges=edges.filter(e=>{
+    if(e.a===n||e.b===n){
+      if(e.a!==n) e.a.connections--;
+      if(e.b!==n) e.b.connections--;
+      return false;
+    }
+    return true;
+  });
+  nodes=nodes.filter(x=>x!==n);
+}
+
+function physics(){
+  for(let n of nodes){
+    n.vx*=0.92;n.vy*=0.92;
+    let cx=500,cy=400;
+    n.vx+=(cx-n.x)*0.0003;
+    n.vy+=(cy-n.y)*0.0003;
+  }
+  for(let i=0;i<nodes.length;i++){
+    for(let j=i+1;j<nodes.length;j++){
+      let a=nodes[i],b=nodes[j];
+      let dx=b.x-a.x,dy=b.y-a.y;
+      let d=Math.sqrt(dx*dx+dy*dy)||1;
+      let repel=800/(d*d);
+      a.vx-=dx/d*repel;a.vy-=dy/d*repel;
+      b.vx+=dx/d*repel;b.vy+=dy/d*repel;
+    }
+  }
+
+  for(let e of edges){
+    let dx=e.b.x-e.a.x,dy=e.b.y-e.a.y;
+    let d=Math.sqrt(dx*dx+dy*dy)||1;
+    let ideal=120+Math.random()*30;
+    let force=(d-ideal)*0.002*e.strength;
+    e.a.vx+=dx/d*force;e.a.vy+=dy/d*force;
+    e.b.vx-=dx/d*force;e.b.vy-=dy/d*force;
+  }
+  for(let n of nodes){
+    n.x+=n.vx;n.y+=n.vy;
+    n.x=Math.max(80,Math.min(W-500,n.x));
+    n.y=Math.max(80,Math.min(H-100,n.y));
+  }
+}
+
+function render(){
+  frame++;
+  ctx.clearRect(0,0,W,H);
+  physics();
+  for(let n of nodes){
+    n.radius+=(n.targetRadius-n.radius)*0.08;
+    n.alpha+=(n.targetAlpha-n.alpha)*0.04;
+    n.glowAlpha*=0.97;
+    n.age++;
+    if(frame-n.lastActive>600) n.targetAlpha=Math.max(0.15,n.targetAlpha-0.001);
+  }
+  for(let e of edges){
+    e.strength+=(e.targetStrength-e.strength)*0.05;
+    e.age++;
+  }
+  edges=edges.filter(e=>e.strength>0.01);
+  for(let e of edges){
+    let a=e.a,b=e.b;
+    ctx.beginPath();
+    ctx.moveTo(a.x,a.y);
+    let mx=(a.x+b.x)/2+(Math.sin(frame*0.01+e.age)*10);
+    let my=(a.y+b.y)/2+(Math.cos(frame*0.012+e.age)*10);
+    ctx.quadraticCurveTo(mx,my,b.x,b.y);
+    let ea=e.strength*0.3*Math.min(a.alpha,b.alpha);
+    ctx.strokeStyle=`rgba(180,160,255,${ea})`;
+    ctx.lineWidth=0.8+e.strength;
+    ctx.stroke();
+  }
+
+  for(let n of nodes){
+    let c=n.color;
+    let glow=n.glowAlpha*0.4*n.alpha;
+    if(glow>0.02){
+      let gr=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.radius*3);
+      gr.addColorStop(0,`hsla(${c.h},${c.s}%,${c.l}%,${glow})`);
+      gr.addColorStop(1,`hsla(${c.h},${c.s}%,${c.l}%,0)`);
+      ctx.fillStyle=gr;
+      ctx.fillRect(n.x-n.radius*3,n.y-n.radius*3,n.radius*6,n.radius*6);
+    }
+    ctx.beginPath();
+    ctx.arc(n.x,n.y,n.radius,0,Math.PI*2);
+    ctx.fillStyle=`hsla(${c.h},${c.s}%,${c.l}%,${n.alpha*0.25})`;
+    ctx.fill();
+    ctx.strokeStyle=`hsla(${c.h},${c.s}%,${c.l}%,${n.alpha*0.5})`;
+    ctx.lineWidth=1;
+    ctx.stroke();
+    ctx.fillStyle=`rgba(255,255,255,${n.alpha*0.85})`;
+    ctx.font='14px "M PLUS Rounded 1c",sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(n.word,n.x,n.y);
+  }
+  requestAnimationFrame(render);
+}
+
+let ws=null;
+function connect(){
+  ws=new WebSocket(WS_URL);
+  ws.onopen=()=>console.log('ThoughtWeb: WS connected');
+  ws.onclose=()=>{setTimeout(connect,2000);};
+  ws.onerror=()=>{};
+  ws.onmessage=(e)=>{
+    try{
+      const msg=JSON.parse(e.data);
+      if(msg.type==='subtitle'&&msg.text){
+        let words=extractWords(msg.text);
+        if(words.length>0) addWords(words);
+      }
+      else if(msg.type==='topic_change'&&msg.keywords){
+        addWords(msg.keywords.slice(0,4));
+      }
+    }catch(err){}
+  };
+}
+connect();
+render();
+</script>
+</body>
+</html>

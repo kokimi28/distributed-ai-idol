@@ -1,0 +1,360 @@
+<!-- overlay/neural_core.html - まおの脳内プロセス可視化 -->
+<!-- OBS Browser Source: 1920x1080, アバターの後ろ -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+*{margin:0;padding:0}
+body{overflow:hidden;background:transparent;
+  font-family:'M PLUS Rounded 1c',sans-serif}
+canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const WS_URL='ws://127.0.0.1:8765';
+const C=document.getElementById('c');
+const ctx=C.getContext('2d');
+C.width=1920;C.height=1080;
+
+// === 定数 ===
+const CX=520, CY=480; // コア中心（左寄り、アバター避け）
+const RING_R=[60,120,190,260]; // 4段リングの半径
+const RING_NAMES=['reflex','emotion','expression','memory'];
+const RING_HUE=[320,270,200,160]; // ピンク→紫→青→ティール
+let frame=0, ws=null;
+
+// === 感情状態 ===
+let emo={joy:40,sadness:0,anger:0,surprise:0,affection:50,
+  fear:0,tension:40,loneliness:0,fatigue:0};
+let targetEmo={...emo};
+let dominantHue=270;
+
+// === パーティクルシステム ===
+let particles=[];   // リング上を流れるデータ粒子
+let keywords=[];     // 軌道上のキーワードノード
+let synapses=[];     // ノード間のシナプス発火
+let corePulse=0;     // コアの脈動
+let processingBurst=0; // 発話時のバースト
+
+// === パーティクル（リング上を流れるデータ） ===
+class Particle {
+  constructor(ringIdx,speed){
+    this.ring=ringIdx;
+    this.angle=Math.random()*Math.PI*2;
+    this.speed=speed||(0.005+Math.random()*0.015);
+    this.r=RING_R[ringIdx]+(-4+Math.random()*8);
+    this.size=1.5+Math.random()*2;
+    this.alpha=0.4+Math.random()*0.4;
+    this.life=300+Math.random()*400;
+    this.age=0;
+    this.hue=RING_HUE[ringIdx]+(Math.random()-0.5)*30;
+  }
+  update(){
+    this.angle+=this.speed*(this.ring%2===0?1:-1);
+    this.age++;
+    if(this.age>this.life*0.8) this.alpha*=0.97;
+  }
+  draw(ctx){
+    let x=CX+Math.cos(this.angle)*this.r;
+    let y=CY+Math.sin(this.angle)*this.r;
+    ctx.beginPath();
+    ctx.arc(x,y,this.size,0,Math.PI*2);
+    ctx.fillStyle=`hsla(${this.hue},70%,70%,${this.alpha})`;
+    ctx.fill();
+  }
+  get dead(){return this.age>this.life||this.alpha<0.02;}
+}
+
+// === キーワードノード（軌道上の概念） ===
+class KeywordNode {
+  constructor(word, ringIdx){
+    this.word=word;
+    this.ring=ringIdx||Math.floor(1+Math.random()*3);
+    this.angle=Math.random()*Math.PI*2;
+    this.orbitR=RING_R[this.ring]+(Math.random()-0.5)*40;
+    this.speed=0.001+Math.random()*0.003;
+    this.alpha=0; this.targetAlpha=0.85;
+    this.scale=0; this.targetScale=1;
+    this.hue=RING_HUE[this.ring]+(Math.random()-0.5)*40;
+    this.age=0; this.lastActive=frame;
+    this.pulsePhase=Math.random()*Math.PI*2;
+  }
+  update(){
+    this.angle+=this.speed*(this.ring%2===0?1:-1);
+    this.alpha+=(this.targetAlpha-this.alpha)*0.05;
+    this.scale+=(this.targetScale-this.scale)*0.08;
+    this.age++;
+    if(frame-this.lastActive>500) this.targetAlpha=Math.max(0.1,this.targetAlpha-0.002);
+  }
+  get x(){return CX+Math.cos(this.angle)*this.orbitR;}
+  get y(){return CY+Math.sin(this.angle)*this.orbitR;}
+  get dead(){return this.alpha<0.03;}
+}
+
+// === シナプス発火（ノード間の電気的接続） ===
+class Synapse {
+  constructor(a,b){
+    this.a=a; this.b=b;
+    this.progress=0; this.speed=0.03+Math.random()*0.02;
+    this.alpha=0.7; this.width=1+Math.random();
+  }
+  update(){
+    this.progress+=this.speed;
+    this.alpha*=0.985;
+  }
+  draw(ctx){
+    let ax=this.a.x, ay=this.a.y, bx=this.b.x, by=this.b.y;
+    let mx=(ax+bx)/2+(Math.sin(frame*0.02)*20);
+    let my=(ay+by)/2+(Math.cos(frame*0.015)*20);
+    ctx.beginPath();
+    ctx.moveTo(ax,ay);
+    ctx.quadraticCurveTo(mx,my,bx,by);
+    ctx.strokeStyle=`hsla(270,60%,70%,${this.alpha*0.3})`;
+    ctx.lineWidth=this.width*0.5;
+    ctx.stroke();
+    let t=this.progress%1;
+    let px=ax*(1-t)*(1-t)+mx*2*(1-t)*t+bx*t*t;
+    let py=ay*(1-t)*(1-t)+my*2*(1-t)*t+by*t*t;
+    ctx.beginPath();
+    ctx.arc(px,py,2+this.width,0,Math.PI*2);
+    ctx.fillStyle=`hsla(270,80%,80%,${this.alpha*0.8})`;
+    ctx.fill();
+  }
+  get dead(){return this.alpha<0.02;}
+}
+
+// === 処理カスケード（発話時に4段リングを順に通過） ===
+let cascadeRing=-1, cascadeTimer=0;
+function triggerCascade(){
+  cascadeRing=0; cascadeTimer=0; processingBurst=1.0;
+  for(let i=0;i<15;i++){
+    particles.push(new Particle(0,0.02+Math.random()*0.03));
+  }
+}
+function updateCascade(){
+  if(cascadeRing<0) return;
+  cascadeTimer++;
+  if(cascadeTimer%20===0 && cascadeRing<3){
+    cascadeRing++;
+    for(let i=0;i<10+cascadeRing*3;i++){
+      particles.push(new Particle(cascadeRing,0.01+Math.random()*0.02));
+    }
+  }
+  if(cascadeTimer>100) cascadeRing=-1;
+}
+
+// === キーワード抽出 ===
+const STOP=['なんか','てかさ','でもさ','えーっと','んー','ふふ','あはは',
+  'まあ','じゃん','だよね','かも','っていうか','みたいな','それ','これ',
+  'あれ','わたし','なんだろ','だけど','あのさ','いやさ'];
+function extractKW(text){
+  let c=text.replace(/【[^】]+】/g,'').replace(/\n/g,' ');
+  let ws=c.split(/[、。！？…\s「」]+/).filter(w=>w.length>=2&&w.length<=8);
+  let r=[];
+  for(let w of ws){
+    let s=false;for(let st of STOP){if(w.includes(st)){s=true;break;}}
+    if(!s&&w.length>=2) r.push(w);
+  }
+  return [...new Set(r)].slice(0,4);
+}
+
+const MAX_KW=16;
+function addKeywords(words){
+  let newNodes=[];
+  for(let w of words){
+    let existing=keywords.find(k=>k.word===w);
+    if(existing){
+      existing.lastActive=frame;
+      existing.targetAlpha=0.9;
+      existing.pulsePhase=0;
+      newNodes.push(existing);
+    } else {
+      if(keywords.length>=MAX_KW){
+        let oldest=keywords.reduce((a,b)=>a.lastActive<b.lastActive?a:b);
+        keywords=keywords.filter(k=>k!==oldest);
+      }
+      let n=new KeywordNode(w);
+      n.lastActive=frame;
+      keywords.push(n);
+      newNodes.push(n);
+    }
+  }
+  for(let i=0;i<newNodes.length;i++){
+    for(let j=i+1;j<newNodes.length;j++){
+      synapses.push(new Synapse(newNodes[i],newNodes[j]));
+    }
+    if(keywords.length>1){
+      let others=keywords.filter(k=>!newNodes.includes(k));
+      if(others.length>0){
+        let rand=others[Math.floor(Math.random()*others.length)];
+        synapses.push(new Synapse(newNodes[i],rand));
+      }
+    }
+  }
+}
+
+// === アンビエント粒子を定期補充 ===
+function spawnAmbient(){
+  if(particles.length<60){
+    let ring=Math.floor(Math.random()*4);
+    particles.push(new Particle(ring));
+  }
+}
+
+// === 感情→支配色 ===
+function calcDominantHue(){
+  let map={joy:45,sadness:220,anger:0,surprise:320,affection:25,
+    fear:270,tension:350,loneliness:240};
+  let top='joy',topV=0;
+  for(let[k,v] of Object.entries(emo)){
+    if(map[k]!==undefined && v>topV){top=k;topV=v;}
+  }
+  dominantHue=map[top]||270;
+}
+
+function lerp(a,b,t){return a+(b-a)*t;}
+
+// === メイン描画 ===
+function render(){
+  frame++;
+  ctx.clearRect(0,0,1920,1080);
+  for(let k of Object.keys(emo)){
+    if(targetEmo[k]!==undefined) emo[k]=lerp(emo[k],targetEmo[k],0.03);
+  }
+  calcDominantHue();
+  updateCascade();
+  if(frame%5===0) spawnAmbient();
+  processingBurst*=0.97;
+  corePulse=Math.sin(frame*0.025)*0.3+0.7+processingBurst*0.5;
+
+  // --- 4段リングの描画 ---
+  for(let i=3;i>=0;i--){
+    let r=RING_R[i];
+    let hue=RING_HUE[i];
+    let ringAlpha=0.06+processingBurst*0.08*(i===cascadeRing?3:0.5);
+    ctx.beginPath();
+    ctx.arc(CX,CY,r,0,Math.PI*2);
+    ctx.strokeStyle=`hsla(${hue},50%,60%,${ringAlpha})`;
+    ctx.lineWidth=1;
+    ctx.setLineDash([2,6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // カスケード中のリングは光る
+    if(i===cascadeRing){
+      ctx.beginPath();
+      ctx.arc(CX,CY,r,0,Math.PI*2);
+      ctx.strokeStyle=`hsla(${hue},70%,70%,${0.15+processingBurst*0.2})`;
+      ctx.lineWidth=3;
+      ctx.stroke();
+    }
+  }
+
+  // --- コアの光（中心） ---
+  let coreR=25+corePulse*15;
+  let g1=ctx.createRadialGradient(CX,CY,0,CX,CY,coreR*3);
+  g1.addColorStop(0,`hsla(${dominantHue},60%,70%,${0.15*corePulse})`);
+  g1.addColorStop(0.5,`hsla(${dominantHue},40%,50%,${0.05*corePulse})`);
+  g1.addColorStop(1,`hsla(${dominantHue},30%,40%,0)`);
+  ctx.fillStyle=g1;
+  ctx.fillRect(CX-coreR*3,CY-coreR*3,coreR*6,coreR*6);
+  let g2=ctx.createRadialGradient(CX,CY,0,CX,CY,coreR);
+  g2.addColorStop(0,`hsla(${dominantHue},70%,75%,${0.3*corePulse})`);
+  g2.addColorStop(1,`hsla(${dominantHue},50%,55%,0)`);
+  ctx.fillStyle=g2;
+  ctx.fillRect(CX-coreR,CY-coreR,coreR*2,coreR*2);
+
+  // --- パーティクル ---
+  for(let p of particles){p.update();p.draw(ctx);}
+  particles=particles.filter(p=>!p.dead);
+
+  // --- シナプス ---
+  for(let s of synapses){s.update();s.draw(ctx);}
+  synapses=synapses.filter(s=>!s.dead);
+
+  // --- キーワードノード ---
+  for(let n of keywords){
+    n.update();
+    let pulse=Math.sin(frame*0.03+n.pulsePhase)*0.15+0.85;
+    let sz=14*n.scale;
+    // ノードの光彩
+    let ng=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,sz+10);
+    ng.addColorStop(0,`hsla(${n.hue},60%,70%,${n.alpha*0.2*pulse})`);
+    ng.addColorStop(1,`hsla(${n.hue},40%,50%,0)`);
+    ctx.fillStyle=ng;
+    ctx.fillRect(n.x-sz-10,n.y-sz-10,(sz+10)*2,(sz+10)*2);
+
+    // ノード本体（半透明の円）
+    ctx.beginPath();
+    ctx.arc(n.x,n.y,sz*0.7,0,Math.PI*2);
+    ctx.fillStyle=`hsla(${n.hue},50%,55%,${n.alpha*0.15})`;
+    ctx.fill();
+    ctx.strokeStyle=`hsla(${n.hue},60%,65%,${n.alpha*0.35})`;
+    ctx.lineWidth=0.8;
+    ctx.stroke();
+    // テキスト
+    ctx.fillStyle=`rgba(255,255,255,${n.alpha*0.8*pulse})`;
+    ctx.font=`${Math.round(12*n.scale)}px "M PLUS Rounded 1c",sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(n.word,n.x,n.y);
+  }
+  keywords=keywords.filter(k=>!k.dead);
+
+  // --- リングラベル（処理段階名） ---
+  let labels=[
+    {r:RING_R[0],text:'REFLEX',hue:RING_HUE[0]},
+    {r:RING_R[1],text:'EMOTION',hue:RING_HUE[1]},
+    {r:RING_R[2],text:'EXPRESSION',hue:RING_HUE[2]},
+    {r:RING_R[3],text:'MEMORY',hue:RING_HUE[3]},
+  ];
+  for(let lb of labels){
+    let la=0.12+processingBurst*0.1;
+    ctx.fillStyle=`hsla(${lb.hue},40%,65%,${la})`;
+    ctx.font='10px "M PLUS Rounded 1c",sans-serif';
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText(lb.text,CX+lb.r+8,CY-lb.r*0.05);
+  }
+
+  requestAnimationFrame(render);
+}
+
+// === WebSocket ===
+function connect(){
+  ws=new WebSocket(WS_URL);
+  ws.onopen=()=>console.log('NeuralCore: WS connected');
+  ws.onclose=()=>{setTimeout(connect,2000);};
+  ws.onerror=()=>{};
+  ws.onmessage=(e)=>{
+    try{
+      const msg=JSON.parse(e.data);
+      if(msg.type==='state_update'){
+        targetEmo=msg.emotions||targetEmo;
+      }
+      else if(msg.type==='subtitle'&&msg.text){
+        triggerCascade();
+        let kws=extractKW(msg.text);
+        if(kws.length>0) addKeywords(kws);
+      }
+      else if(msg.type==='topic_change'){
+        triggerCascade();
+        if(msg.keywords&&msg.keywords.length>0){
+          addKeywords(msg.keywords.slice(0,3));
+        }
+      }
+      else if(msg.type==='comment_event'){
+        processingBurst=0.8;
+        for(let i=0;i<8;i++){
+          particles.push(new Particle(0,0.03+Math.random()*0.03));
+        }
+      }
+    }catch(err){}
+  };
+}
+connect();
+render();
+</script>
+</body>
+</html>

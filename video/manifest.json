@@ -1,0 +1,457 @@
+{
+  "clips": {
+    "react_surprise": {
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\react_48a318a016.mp4",
+      "category": "reaction",
+      "item": "surprise",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_6d762718cb1d.png",
+      "image_url": "https://img.theapi.app/temp/ee88d25a-3654-4bda-98d2-a321cba74b9c.png"
+    },
+    "react_laugh": {
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\react_fed284f87a.mp4",
+      "category": "reaction",
+      "item": "laugh",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_6c3c482f6c8a.png",
+      "image_url": "https://img.theapi.app/temp/86743fa9-e05b-4b4b-85df-f998fb2b02fc.png"
+    },
+    "react_think": {
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\react_c44d5d9a66.mp4",
+      "category": "reaction",
+      "item": "think",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_9e3a7bdd13d1.png",
+      "image_url": "https://img.theapi.app/temp/9acb4e0c-6c14-40ab-ab7b-993e3004744b.png"
+    },
+    "react_nod": {
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\react_b410769b28.mp4",
+      "category": "reaction",
+      "item": "nod",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_857071657451.png",
+      "image_url": "https://img.theapi.app/temp/5ff37a2e-c6b6-4291-a4c6-05bbcf6e0ff8.png"
+    },
+    "react_shy": {
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\react_3bcd341530.mp4",
+      "category": "reaction",
+      "item": "shy",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_9df531505be5.png",
+      "image_url": "https://img.theapi.app/temp/cbb925e0-0930-4118-8670-515884490f31.png"
+    },
+    "react_wave": {
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\react_68bc6ef855.mp4",
+      "category": "reaction",
+      "item": "wave",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_c8e9524c9208.png",
+      "image_url": "https://img.theapi.app/temp/a611b147-5cc6-4487-9e2c-2d9ab1b68b56.png"
+    },
+    "desk_type": {
+      "category": "furniture",
+      "item": "desk",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_aff97e27348f.png",
+      "image_url": "https://img.theapi.app/temp/80966d22-b71f-4be7-8f51-2f351d341c73.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\desk_type.mp4"
+    },
+    "desk_lean": {
+      "category": "furniture",
+      "item": "desk",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_188f1ca8371f.png",
+      "image_url": "https://img.theapi.app/temp/38e8ddb3-e029-44fb-ae12-232caca91f34.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\desk_lean.mp4"
+    },
+    "desk_think": {
+      "category": "furniture",
+      "item": "desk",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_29bf03963346.png",
+      "image_url": "https://img.theapi.app/temp/347ca035-5138-4870-a53c-9e892815e48e.png",
+      "frames": [
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_desk_think_f0.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_desk_think_f1.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_desk_think_f2.png"
+      ],
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\desk_think.mp4"
+    },
+    "desk_close": {
+      "category": "furniture",
+      "item": "desk",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_891f1f90a0f5.png",
+      "image_url": "https://img.theapi.app/temp/a34fc8da-64a3-4b73-a536-0c56d4b52d7f.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\desk_close.mp4"
+    },
+    "shelf_browse": {
+      "category": "furniture",
+      "item": "bookshelf",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_c1aa7cbf0549.png",
+      "image_url": "https://img.theapi.app/temp/dcd7456c-06c9-4ed4-92a8-b6751eaf430b.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\shelf_browse.mp4"
+    },
+    "shelf_read": {
+      "category": "furniture",
+      "item": "bookshelf",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_5af1331fd026.png",
+      "image_url": "https://img.theapi.app/temp/b220a246-c57f-4022-914b-4a90e19723ec.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\shelf_read.mp4"
+    },
+    "shelf_reach": {
+      "category": "furniture",
+      "item": "bookshelf",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_26f3ef16c763.png",
+      "image_url": "https://img.theapi.app/temp/f2431dee-5381-4da1-a051-285b39da0751.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\shelf_reach.mp4"
+    },
+    "shelf_put": {
+      "category": "furniture",
+      "item": "bookshelf",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_c873d1d21133.png",
+      "image_url": "https://img.theapi.app/temp/cb2ba475-d277-4d5e-bb53-55d63dd5fdf7.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\shelf_put.mp4"
+    },
+    "shelf_tidy": {
+      "category": "furniture",
+      "item": "bookshelf",
+      "cam": "C",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_e9a1202a3980.png",
+      "image_url": "https://img.theapi.app/temp/ac0f8ca2-2493-4b30-890c-3a14367beb61.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\shelf_tidy.mp4"
+    },
+    "bed_flop": {
+      "category": "furniture",
+      "item": "bed",
+      "cam": "C",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_35c953f0574d.png",
+      "image_url": "https://img.theapi.app/temp/7fc0c259-2719-4e96-b147-44588070f596.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\bed_flop.mp4"
+    },
+    "bed_read": {
+      "category": "furniture",
+      "item": "bed",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_c1553fa4314c.png",
+      "image_url": "https://img.theapi.app/temp/500b272e-2e9c-4a7a-86b8-a34af090278a.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\bed_read.mp4"
+    },
+    "bed_curl": {
+      "category": "furniture",
+      "item": "bed",
+      "cam": "C",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_12e5945d704d.png",
+      "image_url": "https://img.theapi.app/temp/006d011a-e18f-4993-a268-45b858542105.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\bed_curl.mp4"
+    },
+    "bed_sit": {
+      "category": "furniture",
+      "item": "bed",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_4c141c96f4c8.png",
+      "image_url": "https://img.theapi.app/temp/3273e23f-e74d-4e20-ba29-08fc6baee846.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\bed_sit.mp4"
+    },
+    "bed_phone": {
+      "category": "furniture",
+      "item": "bed",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_6e45ca1dac2b.png",
+      "image_url": "https://img.theapi.app/temp/3a43f679-83ff-4d00-8559-838dc69d6dff.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\bed_phone.mp4"
+    },
+    "guitar_tune": {
+      "category": "item",
+      "item": "guitar",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_b60da3e13036.png",
+      "image_url": "https://img.theapi.app/temp/ea8f3a44-bfc3-4260-82ee-7d859a9da624.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\guitar_tune.mp4"
+    },
+    "guitar_play": {
+      "category": "item",
+      "item": "guitar",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_429f015f2bf0.png",
+      "image_url": "https://img.theapi.app/temp/49d1ef20-cd4e-4063-b601-9ab971c98be5.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\guitar_play.mp4"
+    },
+    "guitar_hum": {
+      "category": "item",
+      "item": "guitar",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_a42cb7c91e63.png",
+      "image_url": "https://img.theapi.app/temp/1794d018-c57f-4749-b90b-ac31b03d868d.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\guitar_hum.mp4"
+    },
+    "guitar_down": {
+      "category": "item",
+      "item": "guitar",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_c7742c39ac96.png",
+      "image_url": "https://img.theapi.app/temp/767c5513-3d4c-4961-a189-5445f08eff7f.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\guitar_down.mp4"
+    },
+    "scope_peer": {
+      "category": "item",
+      "item": "telescope",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_cf259615abb1.png",
+      "image_url": "https://img.theapi.app/temp/4243268e-47c0-40df-8396-0e2d934e797b.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\scope_peer.mp4"
+    },
+    "scope_wow": {
+      "category": "item",
+      "item": "telescope",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_556b0d0c544d.png",
+      "image_url": "https://img.theapi.app/temp/f50d3064-a597-4571-a1c2-9e473fafe8a2.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\scope_wow.mp4"
+    },
+    "scope_adjust": {
+      "category": "item",
+      "item": "telescope",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_adf3d8c31ba3.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\scope_adjust.mp4",
+      "image_url": "https://img.theapi.app/temp/2009b4ff-800b-49f9-aac5-3b44d4b06223.png"
+    },
+    "cat_play": {
+      "category": "item",
+      "item": "cat",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_ca1d49ede7ea.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\cat_play.mp4",
+      "image_url": "https://img.theapi.app/temp/03802911-7598-48f5-85d4-942b5e4a724a.png"
+    },
+    "cat_lap": {
+      "category": "item",
+      "item": "cat",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_04d451efcd44.png",
+      "frames": [
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_cat_lap_f0.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_cat_lap_f1.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_cat_lap_f2.png"
+      ],
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\cat_lap.mp4",
+      "image_url": "https://img.theapi.app/temp/33b1b95d-e9f7-421a-baef-5d438ee928a4.png"
+    },
+    "cat_show": {
+      "category": "item",
+      "item": "cat",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_b2e547eb2c87.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\cat_show.mp4",
+      "image_url": "https://img.theapi.app/temp/0e80bcc2-6baf-4177-9b03-cfa9f0060821.png"
+    },
+    "cat_watch": {
+      "category": "item",
+      "item": "cat",
+      "cam": "C",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_ab76238e9ef3.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\cat_watch.mp4",
+      "image_url": "https://img.theapi.app/temp/6dab3c3b-aa4b-416a-ac6b-7422c5c8d909.png"
+    },
+    "cat_feed": {
+      "category": "item",
+      "item": "cat",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_54777b61b7fb.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\cat_feed.mp4",
+      "image_url": "https://img.theapi.app/temp/ab35165e-60bb-4fa8-8f27-5d45ab5f0133.png"
+    },
+    "mug_sip": {
+      "category": "item",
+      "item": "mug",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_dcadcc3e4485.png",
+      "frames": [
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_mug_sip_f0.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_mug_sip_f1.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_mug_sip_f2.png"
+      ],
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\mug_sip.mp4",
+      "image_url": "https://img.theapi.app/temp/47e39c20-9b7f-4047-887e-078e373b7554.png"
+    },
+    "mug_warm": {
+      "category": "item",
+      "item": "mug",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_c47f2476b7db.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\mug_warm.mp4",
+      "image_url": "https://img.theapi.app/temp/77f466a0-a61c-46d3-be75-58735071a654.png"
+    },
+    "mug_window": {
+      "category": "item",
+      "item": "mug",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_1fbbbd906f75.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\mug_window.mp4",
+      "image_url": "https://img.theapi.app/temp/b062c7b9-4e06-4ae9-aa1b-f88b7aeb7c87.png"
+    },
+    "hp_on": {
+      "category": "item",
+      "item": "headphones",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_dfd4d3dfb681.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\hp_on.mp4",
+      "image_url": "https://img.theapi.app/temp/0a00c131-fed2-4af2-89aa-33104f38c669.png"
+    },
+    "hp_off": {
+      "category": "item",
+      "item": "headphones",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_9ebc9f27c73c.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\hp_off.mp4",
+      "image_url": "https://img.theapi.app/temp/0503a62f-9bc5-427f-9279-29613d78d1b1.png"
+    },
+    "hp_dance": {
+      "category": "item",
+      "item": "headphones",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_0b2eae5d098a.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\hp_dance.mp4",
+      "image_url": "https://img.theapi.app/temp/8fe83332-4f99-42a5-bbdc-ef24bd533296.png"
+    },
+    "plant_mist": {
+      "category": "item",
+      "item": "plants",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_17bc1e368905.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\plant_mist.mp4",
+      "image_url": "https://img.theapi.app/temp/e642a7c2-7bd3-4d70-811d-f7cc0f7b65b2.png"
+    },
+    "plant_look": {
+      "category": "item",
+      "item": "plants",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_28ed68e345b4.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\plant_look.mp4",
+      "image_url": "https://img.theapi.app/temp/35e21c5a-95e9-4e54-8ea2-f7825141ae66.png"
+    },
+    "plant_talk": {
+      "category": "item",
+      "item": "plants",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_014fa577635e.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\plant_talk.mp4",
+      "image_url": "https://img.theapi.app/temp/ceb96487-a22e-4986-9e58-626243aa7029.png"
+    },
+    "talk_gesture": {
+      "category": "talking",
+      "item": "_talking",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_f0143c1c5cda.png",
+      "image_url": "https://img.theapi.app/temp/3a1eb8e2-3247-4d7e-9eca-7922db93c334.png",
+      "frames": [
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_gesture_f0.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_gesture_f1.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_gesture_f2.png"
+      ],
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\talk_gesture.mp4"
+    },
+    "talk_chin": {
+      "category": "talking",
+      "item": "_talking",
+      "cam": "A",
+      "frames": [
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_chin_f0.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_chin_f1.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_chin_f2.png"
+      ],
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\talk_chin.mp4",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_4bd826b90156.png",
+      "image_url": "https://img.theapi.app/temp/24a82ee3-063c-4a3c-972d-44b374270617.png"
+    },
+    "talk_excited": {
+      "category": "talking",
+      "item": "_talking",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_f529106c899d.png",
+      "image_url": "https://img.theapi.app/temp/bf2b2f46-a453-448f-8041-8530ae243c4b.png",
+      "frames": [
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_excited_f0.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_excited_f1.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_excited_f2.png"
+      ],
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\talk_excited.mp4"
+    },
+    "talk_think": {
+      "category": "talking",
+      "item": "_talking",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_7b80f3a47b59.png",
+      "image_url": "https://img.theapi.app/temp/460464a9-8676-43e7-9bfe-e5fbc0c30f40.png",
+      "frames": [
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_think_f0.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_think_f1.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_think_f2.png"
+      ],
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\talk_think.mp4"
+    },
+    "talk_laugh": {
+      "category": "talking",
+      "item": "_talking",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_b5f8e701d85f.png",
+      "image_url": "https://img.theapi.app/temp/c19dd1b0-f8fa-417a-8bc9-97dc7f67a138.png",
+      "frames": [
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_laugh_f0.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_laugh_f1.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_laugh_f2.png"
+      ],
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\talk_laugh.mp4"
+    },
+    "talk_whisper": {
+      "category": "talking",
+      "item": "_talking",
+      "cam": "A",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_56d1c0b76a7c.png",
+      "image_url": "https://img.theapi.app/temp/10892f95-4a1f-446a-b9ad-24c076428cb5.png",
+      "frames": [
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_whisper_f0.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_whisper_f1.png",
+        "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\mf2_talk_whisper_f2.png"
+      ],
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\talk_whisper.mp4"
+    },
+    "trans_desk_shelf": {
+      "category": "transition",
+      "item": "_transition",
+      "cam": "C",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_79583c0d0ce7.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\trans_desk_shelf.mp4",
+      "image_url": "https://img.theapi.app/temp/1614acaf-1315-4788-937a-c17ecf266b84.png"
+    },
+    "trans_bed_desk": {
+      "category": "transition",
+      "item": "_transition",
+      "cam": "C",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_e21ab02f57da.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\trans_bed_desk.mp4",
+      "image_url": "https://img.theapi.app/temp/7232f95f-b90e-4b24-be6b-6ed831396e17.png"
+    },
+    "trans_window": {
+      "category": "transition",
+      "item": "_transition",
+      "cam": "C",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_5bff3ce3b32b.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\trans_window.mp4",
+      "image_url": "https://img.theapi.app/temp/25e727c0-e04d-4cce-b9f6-1d9ed77263c4.png"
+    },
+    "trans_sit": {
+      "category": "transition",
+      "item": "_transition",
+      "cam": "B",
+      "image": "C:\\Projects\\distributed-ai-idol\\video\\cache\\img\\img_4f9b84ade7a0.png",
+      "video": "C:\\Projects\\distributed-ai-idol\\video\\cache\\trans_sit.mp4",
+      "image_url": "https://img.theapi.app/temp/00158d90-9466-4e70-8267-f33af0e85c62.png"
+    }
+  }
+}

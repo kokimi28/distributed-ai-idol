@@ -1,0 +1,76 @@
+<!-- overlay/video_bg.html - AI動画背景 (全画面/モクモク雲切替) -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+*{margin:0;padding:0}
+body{overflow:hidden;background:transparent}
+.vp{position:absolute;top:0;left:0;width:100vw;height:100vh;object-fit:cover;opacity:0;transition:opacity 2s ease}
+.vp.active{opacity:1}
+.vp.cloud-mode{top:5%;left:55%;width:40%;height:45%;object-fit:cover;border-radius:50% 50% 45% 55% / 50% 55% 45% 50%;opacity:0;transition:opacity 2s ease;filter:blur(0px)}
+.vp.cloud-mode.active{opacity:0.85}
+</style>
+</head>
+<body>
+<video id="v1" class="vp" muted loop playsinline></video>
+<video id="v2" class="vp" muted loop playsinline></video>
+
+<script>
+const WS_URL = 'ws://127.0.0.1:8765';
+const v1 = document.getElementById('v1');
+const v2 = document.getElementById('v2');
+let activePlayer = v1;
+let standbyPlayer = v2;
+let ws = null;
+let displayMode = 'fullscreen'; // 'fullscreen' or 'cloud'
+
+// URL params for mode: ?mode=cloud or ?mode=fullscreen
+const params = new URLSearchParams(window.location.search);
+if (params.get('mode') === 'cloud') displayMode = 'cloud';
+
+function applyMode() {
+  [v1, v2].forEach(v => {
+    v.classList.remove('cloud-mode');
+    if (displayMode === 'cloud') v.classList.add('cloud-mode');
+  });
+}
+applyMode();
+
+function crossfadeTo(url) {
+  standbyPlayer.src = url;
+  standbyPlayer.load();
+  standbyPlayer.play().then(() => {
+    standbyPlayer.classList.add('active');
+    activePlayer.classList.remove('active');
+    // swap
+    const tmp = activePlayer;
+    activePlayer = standbyPlayer;
+    standbyPlayer = tmp;
+    // 旧プレイヤーを2秒後に停止
+    setTimeout(() => { standbyPlayer.pause(); }, 2500);
+  }).catch(err => {
+    console.warn('Video play failed:', err);
+  });
+}
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => console.log('Video BG: WS connected');
+  ws.onclose = () => { setTimeout(connect, 2000); };
+  ws.onerror = () => {};
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'video_ready' && msg.video_url) {
+        console.log('Video ready:', msg.topic, msg.video_url);
+        crossfadeTo(msg.video_url);
+      }
+    } catch(err) {}
+  };
+}
+
+connect();
+</script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!-- overlay/emotion_orb.html - 感情オーブ -->
+<!-- OBS Browser Source: 300x300, 配置自由 -->
+<!-- 数値なし。色・脈動・大きさだけで感情を直感的に伝える -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+*{margin:0;padding:0}
+body{overflow:hidden;background:transparent}
+canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="c" width="300" height="300"></canvas>
+<script>
+const WS_URL='ws://127.0.0.1:8765';
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+const W=300, H=300, CX=150, CY=150;
+
+// 感情→色相マッピング
+const EMO_HUE = {
+  joy:45, sadness:220, anger:0, surprise:320,
+  affection:25, fear:270, tension:350, loneliness:240, fatigue:0
+};
+const EMO_SAT = {
+  joy:85, sadness:55, anger:80, surprise:70,
+  affection:80, fear:50, tension:65, loneliness:40, fatigue:5
+};
+
+let emo = {joy:40,sadness:0,anger:0,surprise:0,embarrass:0,
+  fear:0,affection:50,fatigue:0,tension:40,loneliness:0};
+let targetEmo = {...emo};
+let ws = null;
+let frame = 0;
+
+// オーブ状態
+let orbHue = 45;
+let orbSat = 60;
+let orbIntensity = 0.5;
+let orbPulseSpeed = 0.02;
+let targetHue = 45;
+let targetSat = 60;
+let targetIntensity = 0.5;
+let targetPulseSpeed = 0.02;
+
+// 支配的な感情からオーブのパラメータを計算
+function calcOrb(e) {
+  let topName='joy', topVal=0, totalVal=0;
+  for(const [k,v] of Object.entries(e)) {
+    if(!EMO_HUE.hasOwnProperty(k)) continue;
+    if(v>topVal){topName=k; topVal=v;}
+    totalVal+=v;
+  }
+  // 色相: 支配感情の色
+  targetHue = EMO_HUE[topName] || 45;
+  targetSat = EMO_SAT[topName] || 60;
+  // 強度: 感情の総量（0-1）。穏やかな時は小さく、激しい時は大きく
+  targetIntensity = Math.min(1, totalVal / 300);
+  // 脈動速度: tension/surpriseで速く、fatigue/lonelinessで遅く
+  const excitement = (e.tension||0) + (e.surprise||0) + (e.joy||0)*0.5;
+  const calm = (e.fatigue||0) + (e.loneliness||0) + (e.sadness||0)*0.5;
+  targetPulseSpeed = 0.015 + (excitement/300)*0.04 - (calm/400)*0.01;
+  targetPulseSpeed = Math.max(0.008, Math.min(0.06, targetPulseSpeed));
+}
+
+function lerp(a,b,t){return a+(b-a)*t}
+function lerpAngle(a,b,t){
+  let d=b-a;
+  if(d>180)d-=360; if(d<-180)d+=360;
+  return (a+d*t+360)%360;
+}
+
+function render() {
+  frame++;
+  ctx.clearRect(0,0,W,H);
+
+  // 緩やかに目標値へ追従
+  for(const k of Object.keys(emo)) {
+    if(targetEmo[k]!==undefined) emo[k]=lerp(emo[k],targetEmo[k],0.05);
+  }
+  calcOrb(emo);
+  orbHue = lerpAngle(orbHue, targetHue, 0.02);
+  orbSat = lerp(orbSat, targetSat, 0.02);
+  orbIntensity = lerp(orbIntensity, targetIntensity, 0.03);
+  orbPulseSpeed = lerp(orbPulseSpeed, targetPulseSpeed, 0.02);
+
+  // 脈動
+  const pulse = Math.sin(frame * orbPulseSpeed) * 0.5 + 0.5;
+  const pulse2 = Math.sin(frame * orbPulseSpeed * 0.7 + 1) * 0.5 + 0.5;
+  const baseR = 30 + orbIntensity * 50;
+  const r = baseR + pulse * 15;
+
+  // レイヤー1: 外側のぼんやりした光（大きく薄い）
+  const outerR = r * 2.5 + pulse2 * 20;
+  const g1 = ctx.createRadialGradient(CX,CY,0, CX,CY, outerR);
+  const outerA = orbIntensity * 0.2;
+  g1.addColorStop(0, `hsla(${orbHue},${orbSat}%,55%,${outerA})`);
+  g1.addColorStop(0.5, `hsla(${orbHue},${orbSat*0.7}%,40%,${outerA*0.4})`);
+  g1.addColorStop(1, `hsla(${orbHue},${orbSat*0.5}%,30%,0)`);
+  ctx.fillStyle = g1;
+  ctx.fillRect(0,0,W,H);
+
+  // レイヤー2: 中間のグロー
+  const midR = r * 1.6 + pulse * 10;
+  const g2 = ctx.createRadialGradient(CX,CY,0, CX,CY, midR);
+  const midA = orbIntensity * 0.35;
+  g2.addColorStop(0, `hsla(${orbHue},${orbSat}%,60%,${midA})`);
+  g2.addColorStop(0.6, `hsla(${orbHue},${orbSat*0.8}%,45%,${midA*0.3})`);
+  g2.addColorStop(1, `hsla(${orbHue},${orbSat*0.5}%,35%,0)`);
+  ctx.fillStyle = g2;
+  ctx.fillRect(0,0,W,H);
+
+  // レイヤー3: コア（明るい中心）
+  const coreR = r * 0.8;
+  const g3 = ctx.createRadialGradient(CX,CY,0, CX,CY, coreR);
+  const coreA = orbIntensity * 0.6 + pulse * 0.15;
+  g3.addColorStop(0, `hsla(${orbHue},${Math.min(100,orbSat+15)}%,70%,${coreA})`);
+  g3.addColorStop(0.5, `hsla(${orbHue},${orbSat}%,55%,${coreA*0.5})`);
+  g3.addColorStop(1, `hsla(${orbHue},${orbSat*0.7}%,40%,0)`);
+  ctx.fillStyle = g3;
+  ctx.fillRect(0,0,W,H);
+
+  // レイヤー4: ハイライト（小さくて明るい点）
+  const hlR = r * 0.25;
+  const g4 = ctx.createRadialGradient(CX-3,CY-3,0, CX,CY, hlR);
+  const hlA = 0.3 + orbIntensity * 0.4 + pulse * 0.1;
+  g4.addColorStop(0, `hsla(${orbHue},${Math.min(100,orbSat+20)}%,85%,${hlA})`);
+  g4.addColorStop(1, `hsla(${orbHue},${orbSat}%,60%,0)`);
+  ctx.fillStyle = g4;
+  ctx.fillRect(CX-hlR*2,CY-hlR*2, hlR*4, hlR*4);
+
+  // レイヤー5: surprise/comment時のフラッシュ
+  if(flashAlpha > 0) {
+    const fR = r * 2;
+    const fg = ctx.createRadialGradient(CX,CY,0, CX,CY, fR);
+    fg.addColorStop(0, `hsla(${flashHue},80%,75%,${flashAlpha})`);
+    fg.addColorStop(1, `hsla(${flashHue},60%,50%,0)`);
+    ctx.fillStyle = fg;
+    ctx.fillRect(0,0,W,H);
+    flashAlpha *= 0.92;
+    if(flashAlpha < 0.01) flashAlpha = 0;
+  }
+
+  requestAnimationFrame(render);
+}
+
+// フラッシュ（コメント時に一瞬明るくなる）
+let flashAlpha = 0;
+let flashHue = 45;
+function flash(hue) {
+  flashHue = hue;
+  flashAlpha = 0.6;
+}
+
+// WebSocket
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => console.log('Orb: WS connected');
+  ws.onclose = () => { setTimeout(connect, 2000); };
+  ws.onerror = () => {};
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'state_update') {
+        targetEmo = msg.emotions || targetEmo;
+      }
+      else if (msg.type === 'comment_event') {
+        const hues = {warmth:25,surprise:320,attention:50,
+          joy_reflex:45,fear_reflex:270,default:200};
+        flash(hues[msg.spike_type] || hues.default);
+      }
+    } catch(err) {}
+  };
+}
+connect();
+render();
+</script>
+</body>
+</html>

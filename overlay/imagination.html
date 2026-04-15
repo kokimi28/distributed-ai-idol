@@ -1,0 +1,742 @@
+<!-- overlay/imagination.html - まおの想像力シアター -->
+<!-- 画面中央にどでかく表示される話題連動アニメーション -->
+<!-- OBS Browser Source: 1920x1080, VTubeの後ろ -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+*{margin:0;padding:0}
+body{overflow:hidden;background:transparent}
+canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const WS='ws://127.0.0.1:8765';
+const C=document.getElementById('c');
+const X=C.getContext('2d');
+const W=C.width=1920,H=C.height=1080;
+let F=0,ws=null;
+let currentScene='default';
+let targetScene='default';
+let sceneTransition=1;
+let speaking=false,speakPower=0;
+
+let emo={joy:40,sadness:0,anger:0,surprise:0,affection:50,
+  fear:0,tension:40,loneliness:0,fatigue:0};
+let tgt={...emo};
+function lerp(a,b,t){return a+(b-a)*t;}
+
+// === シーン判定 ===
+const SCENE_MAP={
+  '宇宙':'space','星':'space','銀河':'space','ロケット':'space',
+  '海':'ocean','水':'ocean','波':'ocean','魚':'ocean','泳':'ocean',
+  '猫':'cozy','犬':'cozy','ペット':'cozy','動物':'cozy','寝':'cozy','布団':'cozy',
+  '夜':'city','街':'city','ネオン':'city','都会':'city','コンビニ':'city',
+  '森':'forest','木':'forest','花':'forest','自然':'forest','緑':'forest',
+  '雨':'rain','傘':'rain','梅雨':'rain','雷':'rain',
+  '音楽':'music','歌':'music','声':'music','メロディ':'music','リズム':'music',
+  '夢':'dream','想像':'dream','妄想':'dream','不思議':'dream','幻':'dream',
+  'AI':'digital','データ':'digital','コード':'digital','プログラム':'digital',
+  '食':'kitchen','料理':'kitchen','おいしい':'kitchen','味':'kitchen',
+  '充電':'digital','スマホ':'digital',
+};
+function detectScene(topic,kws){
+  let all=[topic,...(kws||[])].join(' ');
+  for(let[k,v] of Object.entries(SCENE_MAP)){
+    if(all.includes(k)) return v;
+  }
+  return 'dream';
+}
+
+// === 共有パーティクルプール ===
+let pts=[];
+class Pt{
+  constructor(x,y,vx,vy,sz,col,life,type){
+    this.x=x;this.y=y;this.vx=vx;this.vy=vy;
+    this.sz=sz;this.col=col;this.life=life;
+    this.age=0;this.type=type||'dot';
+    this.phase=Math.random()*6.28;
+    this.startX=x;this.startY=y;
+  }
+  get dead(){return this.age>this.life;}
+  get alpha(){
+    let fi=Math.min(1,this.age/15);
+    let fo=Math.max(0,1-(this.age-this.life*0.7)/(this.life*0.3));
+    return fi*fo;
+  }
+}
+
+// ============================================================
+//  SPACE SCENE: 深宇宙 - 星雲、流れ星、惑星
+// ============================================================
+let stars=[],nebulae=[];
+function initSpace(){
+  stars=[];nebulae=[];
+  for(let i=0;i<200;i++){
+    stars.push({x:Math.random()*W,y:Math.random()*H,
+      sz:0.5+Math.random()*2.5,sp:0.1+Math.random()*0.5,
+      bright:0.3+Math.random()*0.7,phase:Math.random()*6.28,
+      layer:Math.floor(Math.random()*3)});
+  }
+
+  for(let i=0;i<5;i++){
+    nebulae.push({x:200+Math.random()*800,y:150+Math.random()*600,
+      r:150+Math.random()*200,h:Math.random()<0.5?280:200,
+      s:40+Math.random()*30,drift:Math.random()*0.001});
+  }
+}
+function drawSpace(a){
+  // 背景
+  X.fillStyle=`rgba(5,5,20,${a})`;X.fillRect(0,0,W,H);
+  // 星雲
+  for(let n of nebulae){
+    let nx=n.x+Math.sin(F*n.drift)*30;
+    let g=X.createRadialGradient(nx,n.y,0,nx,n.y,n.r);
+    g.addColorStop(0,`hsla(${n.h},${n.s}%,40%,${0.08*a})`);
+    g.addColorStop(0.5,`hsla(${n.h},${n.s-10}%,30%,${0.03*a})`);
+    g.addColorStop(1,`hsla(${n.h},20%,20%,0)`);
+    X.fillStyle=g;X.fillRect(nx-n.r,n.y-n.r,n.r*2,n.r*2);
+  }
+  // 星
+  for(let s of stars){
+    s.x-=s.sp*(s.layer+1)*0.3;
+    if(s.x<-5) s.x=W+5;
+    let twinkle=Math.sin(F*0.05+s.phase)*0.3+0.7;
+    let sa=s.bright*twinkle*a;
+    X.beginPath();X.arc(s.x,s.y,s.sz,0,6.28);
+    X.fillStyle=`rgba(220,230,255,${sa})`;X.fill();
+    if(s.sz>1.5){
+      let g=X.createRadialGradient(s.x,s.y,0,s.x,s.y,s.sz*4);
+      g.addColorStop(0,`rgba(200,220,255,${sa*0.3})`);
+      g.addColorStop(1,'rgba(0,0,0,0)');
+      X.fillStyle=g;X.fillRect(s.x-s.sz*4,s.y-s.sz*4,s.sz*8,s.sz*8);
+    }
+  }
+
+  // 流れ星（ランダム発生）
+  if(Math.random()<0.01){
+    let sx=Math.random()*W*0.8,sy=Math.random()*H*0.4;
+    pts.push(new Pt(sx,sy,8+Math.random()*6,-2-Math.random()*3,
+      2,'rgba(255,255,240,0.9)',30,'streak'));
+  }
+  // 惑星（右上に大きな薄い球）
+  let px=W*0.2+Math.sin(F*0.002)*30, py=H*0.35+Math.cos(F*0.003)*20;
+  let pr=120;
+  let pg=X.createRadialGradient(px-30,py-30,10,px,py,pr);
+  pg.addColorStop(0,`hsla(220,40%,55%,${0.15*a})`);
+  pg.addColorStop(0.7,`hsla(240,30%,35%,${0.08*a})`);
+  pg.addColorStop(1,`hsla(260,20%,20%,0)`);
+  X.fillStyle=pg;X.beginPath();X.arc(px,py,pr,0,6.28);X.fill();
+  // リング
+  X.save();X.translate(px,py);X.scale(1,0.3);
+  X.beginPath();X.arc(0,0,pr*1.6,0,6.28);
+  X.strokeStyle=`rgba(180,200,255,${0.08*a})`;X.lineWidth=3;X.stroke();
+  X.beginPath();X.arc(0,0,pr*1.8,0,6.28);
+  X.strokeStyle=`rgba(160,180,255,${0.04*a})`;X.lineWidth=2;X.stroke();
+  X.restore();
+  // 発話時：星がパルス
+  if(speakPower>0.1){
+    for(let s of stars) s.bright=Math.min(1,s.bright+speakPower*0.01);
+  }
+}
+
+// ============================================================
+//  OCEAN SCENE: 深海 - 波、光条、クラゲ、泡
+// ============================================================
+let jellies=[],seaLights=[];
+function initOcean(){
+  jellies=[];seaLights=[];
+  for(let i=0;i<8;i++){
+    jellies.push({x:100+Math.random()*800,y:200+Math.random()*600,
+      sz:20+Math.random()*40,speed:0.3+Math.random()*0.5,
+      hue:180+Math.random()*60,phase:Math.random()*6.28,
+      drift:Math.random()*0.002});
+  }
+  for(let i=0;i<6;i++){
+    seaLights.push({x:Math.random()*W*0.7,angle:-0.3+Math.random()*0.3,
+      width:80+Math.random()*120,alpha:0.02+Math.random()*0.03});
+  }
+}
+function drawOcean(a){
+  // 深海グラデーション
+  let bg=X.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,`rgba(0,20,60,${a})`);
+  bg.addColorStop(0.4,`rgba(0,15,50,${a})`);
+  bg.addColorStop(1,`rgba(0,8,30,${a})`);
+  X.fillStyle=bg;X.fillRect(0,0,W,H);
+
+  // 光条（上から差し込む光）
+  for(let sl of seaLights){
+    X.save();X.translate(sl.x,0);X.rotate(sl.angle);
+    let g=X.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,`rgba(100,200,255,${sl.alpha*a})`);
+    g.addColorStop(1,`rgba(0,80,150,0)`);
+    X.fillStyle=g;
+    X.beginPath();X.moveTo(-sl.width/2,0);
+    X.lineTo(sl.width/2,0);X.lineTo(sl.width*0.8,H);
+    X.lineTo(-sl.width*0.3,H);X.closePath();X.fill();
+    X.restore();
+  }
+  // クラゲ
+  for(let j of jellies){
+    j.y-=j.speed;j.x+=Math.sin(F*j.drift+j.phase)*0.5;
+    if(j.y<-100){j.y=H+100;j.x=100+Math.random()*800;}
+    let pulse=Math.sin(F*0.03+j.phase)*0.2+0.8;
+    let jx=j.x,jy=j.y,js=j.sz*pulse;
+    // 傘
+    let jg=X.createRadialGradient(jx,jy-js*0.3,0,jx,jy,js);
+    jg.addColorStop(0,`hsla(${j.hue},60%,70%,${0.2*a})`);
+    jg.addColorStop(1,`hsla(${j.hue},40%,50%,0)`);
+    X.fillStyle=jg;
+    X.beginPath();X.arc(jx,jy,js,Math.PI,0);X.fill();
+    // 触手
+    for(let t=0;t<5;t++){
+      let tx=jx-js*0.6+t*(js*0.3);
+      X.beginPath();X.moveTo(tx,jy);
+      let len=js*1.5+Math.sin(F*0.04+t)*js*0.3;
+      X.quadraticCurveTo(tx+Math.sin(F*0.02+t*2)*15,jy+len*0.5,
+        tx+Math.sin(F*0.03+t)*10,jy+len);
+      X.strokeStyle=`hsla(${j.hue},50%,65%,${0.12*a})`;
+      X.lineWidth=1.5;X.stroke();
+    }
+  }
+
+  // 泡（発話時に増加）
+  if(Math.random()<0.03+speakPower*0.1){
+    pts.push(new Pt(100+Math.random()*800,H,0,-1-Math.random()*2,
+      2+Math.random()*5,`rgba(150,220,255,0.3)`,200,'bubble'));
+  }
+}
+
+// ============================================================
+//  COZY SCENE: くつろぎ - ホタル、窓、暖かい光
+// ============================================================
+let cozyLights=[];
+function initCozy(){
+  cozyLights=[];
+  for(let i=0;i<30;i++){
+    cozyLights.push({x:50+Math.random()*900,y:100+Math.random()*800,
+      sz:3+Math.random()*6,phase:Math.random()*6.28,
+      speed:0.2+Math.random()*0.4,hue:30+Math.random()*20,
+      drift:{x:(Math.random()-0.5)*0.3,y:(Math.random()-0.5)*0.2}});
+  }
+}
+function drawCozy(a){
+  X.fillStyle=`rgba(20,15,10,${a})`;X.fillRect(0,0,W,H);
+  // 暖かい大気光
+  let warm=X.createRadialGradient(W*0.3,H*0.4,0,W*0.3,H*0.4,500);
+  warm.addColorStop(0,`rgba(80,50,20,${0.08*a})`);
+  warm.addColorStop(1,'rgba(0,0,0,0)');
+  X.fillStyle=warm;X.fillRect(0,0,W,H);
+
+  // ホタル
+  for(let l of cozyLights){
+    l.x+=l.drift.x;l.y+=l.drift.y;
+    l.drift.x+=(Math.random()-0.5)*0.02;
+    l.drift.y+=(Math.random()-0.5)*0.02;
+    l.drift.x*=0.99;l.drift.y*=0.99;
+    if(l.x<30||l.x>W-400) l.drift.x*=-1;
+    if(l.y<30||l.y>H-30) l.drift.y*=-1;
+    let glow=Math.sin(F*0.02+l.phase)*0.4+0.6;
+    let gr=X.createRadialGradient(l.x,l.y,0,l.x,l.y,l.sz*5);
+    gr.addColorStop(0,`hsla(${l.hue},80%,70%,${glow*0.3*a})`);
+    gr.addColorStop(0.3,`hsla(${l.hue},60%,55%,${glow*0.1*a})`);
+    gr.addColorStop(1,'rgba(0,0,0,0)');
+    X.fillStyle=gr;X.fillRect(l.x-l.sz*5,l.y-l.sz*5,l.sz*10,l.sz*10);
+    X.beginPath();X.arc(l.x,l.y,l.sz*0.5,0,6.28);
+    X.fillStyle=`hsla(${l.hue},90%,80%,${glow*0.6*a})`;X.fill();
+  }
+  // 窓のシルエット（左側に大きく）
+  let wx=W*0.2,wy=H*0.25,ww=280,wh=350;
+  X.strokeStyle=`rgba(60,50,40,${0.15*a})`;X.lineWidth=8;
+  X.strokeRect(wx,wy,ww,wh);
+  // 十字の窓枠
+  X.beginPath();X.moveTo(wx+ww/2,wy);X.lineTo(wx+ww/2,wy+wh);
+  X.moveTo(wx,wy+wh*0.45);X.lineTo(wx+ww,wy+wh*0.45);
+  X.strokeStyle=`rgba(50,40,35,${0.12*a})`;X.lineWidth=4;X.stroke();
+  // 窓の外の月明かり
+  let mg=X.createRadialGradient(wx+ww*0.3,wy+wh*0.3,0,wx+ww*0.5,wy+wh*0.5,ww*0.8);
+  mg.addColorStop(0,`rgba(180,200,220,${0.04*a})`);
+  mg.addColorStop(1,'rgba(0,0,0,0)');
+  X.fillStyle=mg;X.fillRect(wx,wy,ww,wh);
+}
+
+// ============================================================
+//  CITY SCENE: 夜の街 - ビル群シルエット、ネオン、車の光
+// ============================================================
+let buildings=[],neons=[];
+function initCity(){
+  buildings=[];neons=[];
+  for(let i=0;i<25;i++){
+    let bw=40+Math.random()*100,bh=150+Math.random()*500;
+    buildings.push({x:i*50+Math.random()*30,w:bw,h:bh,
+      windows:Math.floor(bh/30),cols:Math.floor(bw/20)});
+  }
+  for(let i=0;i<8;i++){
+    neons.push({x:50+Math.random()*800,y:H-200-Math.random()*300,
+      w:30+Math.random()*80,hue:Math.random()*360,
+      blink:0.5+Math.random()*2,alpha:0.3+Math.random()*0.3});
+  }
+}
+function drawCity(a){
+  // 夜空グラデーション
+  let sky=X.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,`rgba(10,10,30,${a})`);
+  sky.addColorStop(0.5,`rgba(20,15,40,${a})`);
+  sky.addColorStop(1,`rgba(30,20,50,${a})`);
+  X.fillStyle=sky;X.fillRect(0,0,W,H);
+
+  // ビル群シルエット
+  for(let b of buildings){
+    X.fillStyle=`rgba(15,12,25,${0.8*a})`;
+    X.fillRect(b.x,H-b.h,b.w,b.h);
+    // 窓の明かり
+    for(let r=0;r<b.windows;r++){
+      for(let c=0;c<b.cols;c++){
+        if(Math.random()>0.4){
+          let wx=b.x+5+c*20,wy=H-b.h+10+r*30;
+          let winHue=40+Math.random()*20;
+          let winA=0.1+Math.random()*0.15;
+          if(Math.sin(F*0.01+r+c)>0.8) winA*=1.5;
+          X.fillStyle=`hsla(${winHue},60%,65%,${winA*a})`;
+          X.fillRect(wx,wy,12,15);
+        }
+      }
+    }
+  }
+  // ネオンサイン
+  for(let n of neons){
+    let blink=Math.sin(F*0.05*n.blink)>0.3?1:0.3;
+    let g=X.createRadialGradient(n.x,n.y,0,n.x,n.y,n.w);
+    g.addColorStop(0,`hsla(${n.hue},80%,60%,${n.alpha*blink*a})`);
+    g.addColorStop(1,`hsla(${n.hue},60%,40%,0)`);
+    X.fillStyle=g;X.fillRect(n.x-n.w,n.y-n.w,n.w*2,n.w*2);
+  }
+  // 車のヘッドライト（地面を流れる光）
+  if(Math.random()<0.03){
+    pts.push(new Pt(0,H-30+Math.random()*20,4+Math.random()*3,0,
+      2,`rgba(255,240,200,0.5)`,200,'dot'));
+  }
+}
+
+// ============================================================
+//  RAIN SCENE: 雨 - 雨粒、水面、稲光
+// ============================================================
+function initRain(){}
+function drawRain(a){
+  X.fillStyle=`rgba(15,18,25,${a})`;X.fillRect(0,0,W,H);
+  // 雨粒
+  for(let i=0;i<8;i++){
+    pts.push(new Pt(Math.random()*W*0.8,-10,
+      -1-Math.random(),8+Math.random()*6,1,
+      `rgba(150,180,220,${0.15+Math.random()*0.15})`,80,'rain'));
+  }
+  // 水面の波紋（下部）
+  if(Math.random()<0.1){
+    let rx=Math.random()*W*0.7, ry=H*0.85+Math.random()*100;
+    for(let r=0;r<3;r++){
+      let rr=r*15+F%30;
+      X.beginPath();X.arc(rx,ry,rr,0,6.28);
+      X.strokeStyle=`rgba(120,160,200,${Math.max(0,0.08-r*0.02)*a})`;
+      X.lineWidth=0.8;X.stroke();
+    }
+  }
+  // 稲光（まれ）
+  if(Math.random()<0.003){
+    X.fillStyle=`rgba(200,220,255,${0.08*a})`;X.fillRect(0,0,W,H);
+  }
+  // 雨霧
+  let fog=X.createLinearGradient(0,H*0.6,0,H);
+  fog.addColorStop(0,'rgba(0,0,0,0)');
+  fog.addColorStop(1,`rgba(40,50,70,${0.15*a})`);
+  X.fillStyle=fog;X.fillRect(0,0,W,H);
+}
+
+// ============================================================
+//  DREAM SCENE: 夢の中 - 浮遊する幾何学、ポータル、逆さの景色
+// ============================================================
+let dreamShapes=[];
+function initDream(){
+  dreamShapes=[];
+  for(let i=0;i<12;i++){
+    dreamShapes.push({x:100+Math.random()*800,y:100+Math.random()*700,
+      sz:30+Math.random()*80,type:Math.floor(Math.random()*3),
+      rotSpeed:0.002+Math.random()*0.005,rot:Math.random()*6.28,
+      floatPhase:Math.random()*6.28,hue:Math.random()*360,
+      alpha:0.05+Math.random()*0.08});
+  }
+}
+function drawDream(a){
+  X.fillStyle=`rgba(12,8,20,${a})`;X.fillRect(0,0,W,H);
+  // ポータル（中央の大きな渦）
+  let px=W*0.35,py=H*0.45,pR=200+Math.sin(F*0.008)*30;
+  for(let r=5;r>=0;r--){
+    let rr=pR*(r/5);
+    let angle=F*0.003*(r%2===0?1:-1);
+    X.save();X.translate(px,py);X.rotate(angle);
+    X.beginPath();X.arc(0,0,rr,0,6.28);
+    let h=260+r*15;
+    X.strokeStyle=`hsla(${h},60%,60%,${(0.04+r*0.01)*a})`;
+    X.lineWidth=2+r;X.stroke();X.restore();
+  }
+  // ポータルの光
+  let pg=X.createRadialGradient(px,py,0,px,py,pR);
+  pg.addColorStop(0,`rgba(100,60,180,${0.06*a})`);
+  pg.addColorStop(0.5,`rgba(60,30,120,${0.03*a})`);
+  pg.addColorStop(1,'rgba(0,0,0,0)');
+  X.fillStyle=pg;X.fillRect(px-pR,py-pR,pR*2,pR*2);
+
+  // 浮遊する幾何学
+  for(let s of dreamShapes){
+    s.rot+=s.rotSpeed;
+    s.y+=Math.sin(F*0.005+s.floatPhase)*0.3;
+    X.save();X.translate(s.x,s.y);X.rotate(s.rot);
+    X.strokeStyle=`hsla(${s.hue},50%,65%,${s.alpha*a})`;
+    X.lineWidth=1.5;
+    if(s.type===0){X.strokeRect(-s.sz/2,-s.sz/2,s.sz,s.sz);}
+    else if(s.type===1){
+      X.beginPath();
+      for(let i=0;i<=6;i++){
+        let an=i/6*6.28;
+        let hx=Math.cos(an)*s.sz/2,hy=Math.sin(an)*s.sz/2;
+        i===0?X.moveTo(hx,hy):X.lineTo(hx,hy);
+      }X.stroke();
+    }else{
+      X.beginPath();
+      X.moveTo(0,-s.sz/2);X.lineTo(s.sz/2,s.sz/2);
+      X.lineTo(-s.sz/2,s.sz/2);X.closePath();X.stroke();
+    }
+    X.restore();
+  }
+  // 浮遊パーティクル
+  if(Math.random()<0.08){
+    pts.push(new Pt(Math.random()*W*0.7,H+10,
+      (Math.random()-0.5)*0.5,-0.5-Math.random(),
+      2+Math.random()*3,`hsla(${Math.random()*360},50%,70%,0.3)`,300,'dot'));
+  }
+}
+
+// ============================================================
+//  FOREST SCENE: 森 - 木漏れ日、葉、光の筋
+// ============================================================
+function initForest(){}
+function drawForest(a){
+  X.fillStyle=`rgba(8,18,8,${a})`;X.fillRect(0,0,W,H);
+  // 木漏れ日
+  for(let i=0;i<4;i++){
+    let lx=150+i*200+Math.sin(F*0.003+i)*40;
+    let g=X.createLinearGradient(lx,0,lx+100,H);
+    g.addColorStop(0,`rgba(200,230,150,${0.04*a})`);
+    g.addColorStop(0.5,`rgba(150,200,100,${0.02*a})`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    X.save();X.translate(lx,0);X.rotate(-0.1+i*0.05);
+    X.fillStyle=g;X.fillRect(-60,0,120,H);X.restore();
+  }
+  // 落ち葉
+  if(Math.random()<0.04){
+    pts.push(new Pt(Math.random()*W*0.7,-20,
+      0.3+Math.random()*0.5,0.5+Math.random()*1,
+      4+Math.random()*6,`hsla(${80+Math.random()*60},50%,45%,0.25)`,400,'leaf'));
+  }
+  // 森の霧
+  let mist=X.createRadialGradient(W*0.3,H*0.6,100,W*0.3,H*0.6,600);
+  mist.addColorStop(0,`rgba(40,60,30,${0.05*a})`);
+  mist.addColorStop(1,'rgba(0,0,0,0)');
+  X.fillStyle=mist;X.fillRect(0,0,W,H);
+}
+
+// ============================================================
+//  DIGITAL SCENE: デジタル空間 - データストリーム、グリッド
+// ============================================================
+function initDigital(){}
+function drawDigital(a){
+  X.fillStyle=`rgba(5,10,18,${a})`;X.fillRect(0,0,W,H);
+  // グリッド（パース付き）
+  let horizon=H*0.4;
+  for(let z=1;z<=15;z++){
+    let y=horizon+z*z*3;
+    X.beginPath();X.moveTo(0,y);X.lineTo(W*0.8,y);
+    X.strokeStyle=`rgba(0,200,200,${(0.04/z)*a})`;
+    X.lineWidth=0.5;X.stroke();
+  }
+  for(let x=0;x<20;x++){
+    let bx=x*60-200;
+    X.beginPath();X.moveTo(W*0.4,horizon);X.lineTo(bx,H);
+    X.strokeStyle=`rgba(0,200,200,${0.02*a})`;
+    X.lineWidth=0.5;X.stroke();
+  }
+  // データストリーム（縦に流れる文字列）
+  if(Math.random()<0.1){
+    let chars='01';
+    let sx=Math.random()*W*0.6;
+    for(let i=0;i<5;i++){
+      pts.push(new Pt(sx+Math.random()*4,Math.random()*H*0.3,
+        0,2+Math.random()*3,0,
+        `rgba(0,255,200,${0.15+Math.random()*0.15})`,150,'data'));
+    }
+  }
+  // 中央のホログラフィックオーブ
+  let ox=W*0.3,oy=H*0.4,oR=80+Math.sin(F*0.015)*20;
+  for(let r=0;r<3;r++){
+    X.beginPath();X.arc(ox,oy,oR+r*25,0,6.28);
+    X.strokeStyle=`rgba(0,220,255,${(0.06-r*0.015)*a})`;
+    X.lineWidth=1;X.stroke();
+  }
+  let hg=X.createRadialGradient(ox,oy,0,ox,oy,oR);
+  hg.addColorStop(0,`rgba(0,200,255,${0.06*a})`);
+  hg.addColorStop(1,'rgba(0,0,0,0)');
+  X.fillStyle=hg;X.fillRect(ox-oR,oy-oR,oR*2,oR*2);
+}
+
+// ============================================================
+//  MUSIC SCENE: 音楽 - 波形、音符、リズムパルス
+// ============================================================
+function initMusic(){}
+function drawMusic(a){
+  X.fillStyle=`rgba(12,8,18,${a})`;X.fillRect(0,0,W,H);
+  // 波形ビジュアライザー
+  let waveY=H*0.5;
+  for(let w=0;w<3;w++){
+    X.beginPath();
+    let wh=[320,200,260][w];
+    let ws=[0.008,0.012,0.006][w];
+    let hue=[280,220,330][w];
+    for(let x=0;x<W*0.7;x+=3){
+      let amp=wh*(0.3+speakPower*0.7);
+      let y=waveY+Math.sin(x*0.008+F*ws+w)*amp*0.3
+        +Math.sin(x*0.015+F*ws*1.5)*amp*0.15;
+      if(x===0)X.moveTo(x,y);else X.lineTo(x,y);
+    }
+    X.strokeStyle=`hsla(${hue},60%,60%,${(0.06+speakPower*0.08)*a})`;
+    X.lineWidth=1.5-w*0.3;X.stroke();
+  }
+  // 浮遊音符
+  if(Math.random()<0.03+speakPower*0.05){
+    pts.push(new Pt(100+Math.random()*700,H*0.7,
+      (Math.random()-0.5)*1,-1-Math.random()*1.5,
+      0,`hsla(${260+Math.random()*80},60%,70%,0.4)`,250,'note'));
+  }
+}
+
+// ============================================================
+//  KITCHEN SCENE: キッチン - 湯気、暖かい光、食材シルエット
+// ============================================================
+function initKitchen(){}
+function drawKitchen(a){
+  X.fillStyle=`rgba(18,12,8,${a})`;X.fillRect(0,0,W,H);
+  // 暖色の光源
+  let g=X.createRadialGradient(W*0.35,H*0.6,0,W*0.35,H*0.6,400);
+  g.addColorStop(0,`rgba(120,70,20,${0.08*a})`);
+  g.addColorStop(1,'rgba(0,0,0,0)');
+  X.fillStyle=g;X.fillRect(0,0,W,H);
+  // 湯気
+  if(Math.random()<0.06){
+    pts.push(new Pt(W*0.3+Math.random()*200,H*0.7,
+      (Math.random()-0.5)*0.5,-0.5-Math.random()*0.5,
+      8+Math.random()*15,`rgba(200,180,150,0.04)`,250,'steam'));
+  }
+  // テーブルの上の光（反射）
+  X.fillStyle=`rgba(100,70,30,${0.03*a})`;
+  X.fillRect(0,H*0.75,W*0.7,H*0.25);
+}
+
+// ============================================================
+//  シーン初期化・描画ディスパッチ
+// ============================================================
+const INIT={space:initSpace,ocean:initOcean,cozy:initCozy,
+  city:initCity,rain:initRain,dream:initDream,forest:initForest,
+  digital:initDigital,music:initMusic,kitchen:initKitchen};
+const DRAW={space:drawSpace,ocean:drawOcean,cozy:drawCozy,
+  city:drawCity,rain:drawRain,dream:drawDream,forest:drawForest,
+  digital:drawDigital,music:drawMusic,kitchen:drawKitchen};
+
+let prevScene='';
+function switchScene(name){
+  if(name===currentScene) return;
+  prevScene=currentScene;
+  targetScene=name;
+  sceneTransition=0;
+  if(INIT[name]) INIT[name]();
+}
+// 初期化
+initDream();currentScene='dream';
+
+// パーティクル描画
+function drawParticles(){
+  for(let p of pts){
+    p.x+=p.vx;p.y+=p.vy;p.age++;
+    if(p.type==='leaf'){
+      p.vx+=Math.sin(F*0.01+p.phase)*0.02;
+      p.x+=Math.sin(F*0.005+p.phase)*0.5;
+    }
+    if(p.type==='bubble'){
+      p.x+=Math.sin(F*0.02+p.phase)*0.5;
+      p.vy*=0.998;
+    }
+    if(p.type==='steam'){
+      p.x+=Math.sin(F*0.008+p.phase)*0.3;
+      p.sz*=1.003;
+    }
+    let al=p.alpha;
+    if(al<=0) continue;
+
+    if(p.type==='streak'){
+      X.beginPath();X.moveTo(p.x,p.y);
+      X.lineTo(p.x-p.vx*5,p.y-p.vy*5);
+      X.strokeStyle=p.col.replace('0.9',String(al));
+      X.lineWidth=p.sz;X.stroke();
+    }else if(p.type==='rain'){
+      X.beginPath();X.moveTo(p.x,p.y);
+      X.lineTo(p.x+p.vx*3,p.y+p.vy*3);
+      X.strokeStyle=p.col;X.lineWidth=0.8;X.stroke();
+    }else if(p.type==='note'){
+      X.fillStyle=p.col;
+      X.font='20px serif';X.textAlign='center';
+      X.globalAlpha=al;
+      X.fillText(['♪','♫','♩'][Math.floor(p.phase*3)%3],p.x,p.y);
+      X.globalAlpha=1;
+    }else if(p.type==='data'){
+      X.fillStyle=p.col;
+      X.font='12px monospace';X.textAlign='center';
+      X.globalAlpha=al;
+      X.fillText(Math.random()>0.5?'1':'0',p.x,p.y);
+      X.globalAlpha=1;
+    }else if(p.type==='steam'){
+      let sg=X.createRadialGradient(p.x,p.y,0,p.x,p.y,p.sz);
+      sg.addColorStop(0,`rgba(200,180,150,${al*0.04})`);
+      sg.addColorStop(1,'rgba(0,0,0,0)');
+      X.fillStyle=sg;X.fillRect(p.x-p.sz,p.y-p.sz,p.sz*2,p.sz*2);
+    }else{
+      X.beginPath();X.arc(p.x,p.y,p.sz,0,6.28);
+      X.globalAlpha=al;X.fillStyle=p.col;X.fill();X.globalAlpha=1;
+    }
+  }
+  pts=pts.filter(p=>!p.dead);
+}
+
+// ============================================================
+//  メインレンダーループ
+// ============================================================
+function render(){
+  F++;
+  // 感情を追従
+  for(let k of Object.keys(emo)){
+    if(tgt[k]!==undefined) emo[k]=lerp(emo[k],tgt[k],0.02);
+  }
+  speakPower*=0.985;
+
+  // シーン遷移（クロスフェード）
+  if(sceneTransition<1){
+    sceneTransition=Math.min(1,sceneTransition+0.008);
+    // 旧シーンをフェードアウト
+    if(prevScene && DRAW[prevScene]){
+      DRAW[prevScene](1-sceneTransition);
+    }
+    // 新シーンをフェードイン
+    if(DRAW[targetScene]){
+      DRAW[targetScene](sceneTransition);
+    }
+    if(sceneTransition>=1) currentScene=targetScene;
+  } else {
+    // 通常描画
+    if(DRAW[currentScene]) DRAW[currentScene](1);
+  }
+
+  // パーティクル（シーン共通）
+  drawParticles();
+
+  // 発話リップル（アバター付近から波紋が広がる）
+  if(speakPower>0.05){
+    let ripples=3;
+    for(let i=0;i<ripples;i++){
+      let delay=i*0.15;
+      let t=Math.max(0,speakPower-delay);
+      if(t<=0) continue;
+      let rr=50+(1-t)*400;
+      let ra=t*0.06;
+      let col=DRAW[currentScene]===drawSpace?'180,200,255':
+              DRAW[currentScene]===drawOcean?'100,200,255':
+              DRAW[currentScene]===drawCozy?'255,200,150':
+              DRAW[currentScene]===drawCity?'255,180,255':
+              DRAW[currentScene]===drawRain?'150,180,220':
+              DRAW[currentScene]===drawForest?'150,220,100':
+              DRAW[currentScene]===drawDigital?'0,220,255':
+              DRAW[currentScene]===drawMusic?'200,150,255':
+              '200,180,255';
+      X.beginPath();
+      X.arc(W*0.72,H*0.45,rr,0,6.28);
+      X.strokeStyle=`rgba(${col},${ra})`;
+      X.lineWidth=2-i*0.5;
+      X.stroke();
+    }
+  }
+
+  // 全体ビネット（端を暗く）
+  let vig=X.createRadialGradient(W*0.5,H*0.5,H*0.35,W*0.5,H*0.5,H*0.85);
+  vig.addColorStop(0,'rgba(0,0,0,0)');
+  vig.addColorStop(1,'rgba(0,0,0,0.35)');
+  X.fillStyle=vig;X.fillRect(0,0,W,H);
+
+  requestAnimationFrame(render);
+}
+
+// ============================================================
+//  WebSocket接続
+// ============================================================
+function connect(){
+  ws=new WebSocket(WS);
+  ws.onopen=()=>console.log('Imagination: connected');
+  ws.onclose=()=>setTimeout(connect,2000);
+  ws.onerror=()=>{};
+  ws.onmessage=(e)=>{
+    try{
+      let m=JSON.parse(e.data);
+      if(m.type==='state_update'){
+        tgt=m.emotions||tgt;
+        // 話題からシーン判定
+        if(m.topic){
+          let s=detectScene(m.topic,[]);
+          if(s!==currentScene) switchScene(s);
+        }
+      }
+      else if(m.type==='subtitle'){
+        speakPower=1.0;
+        speaking=true;
+      }
+      else if(m.type==='topic_change'){
+        let s=detectScene(m.topic,m.keywords||[]);
+        switchScene(s);
+        // バースト演出
+        for(let i=0;i<50;i++){
+          pts.push(new Pt(W*0.4+Math.random()*200,H*0.4+Math.random()*200,
+            (Math.random()-0.5)*6,(Math.random()-0.5)*6,
+            2+Math.random()*4,'rgba(255,255,255,0.6)',60,'dot'));
+        }
+      }
+
+      else if(m.type==='comment_event'){
+        // コメント: 画面端から光のバースト
+        let side=Math.random()<0.5;
+        let ex=side?0:W*0.8;
+        let ey=200+Math.random()*500;
+        for(let i=0;i<25;i++){
+          let angle=side?(Math.random()*1.2-0.3):(Math.PI+Math.random()*1.2-0.6);
+          let sp=3+Math.random()*5;
+          pts.push(new Pt(ex,ey,Math.cos(angle)*sp,Math.sin(angle)*sp,
+            2+Math.random()*3,'rgba(255,220,180,0.7)',80,'dot'));
+        }
+      }
+    }catch(err){}
+  };
+}
+
+// 初期シーン
+initDream();
+connect();
+render();
+</script>
+</body>
+</html>

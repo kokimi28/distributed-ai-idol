@@ -1,0 +1,249 @@
+<!-- overlay/subtitle.html - 字幕・テロップ -->
+<!-- OBS Browser Source: 1920x1080, VTubeの上に配置 -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;background:transparent;
+  font-family:'M PLUS Rounded 1c','Rounded Mplus 1c',sans-serif}
+
+/* === 話題テロップ（左上） === */
+#topic-bar{
+  position:fixed;top:30px;left:30px;
+  padding:10px 24px 10px 18px;
+  background:rgba(20,20,30,0.75);
+  border-radius:12px;
+  border-left:4px solid rgba(180,140,255,0.8);
+  color:#fff;font-size:18px;font-weight:700;
+  letter-spacing:0.5px;
+  transform:translateX(-120%);
+  transition:transform 0.6s cubic-bezier(0.22,1,0.36,1),
+             opacity 0.4s ease;
+  opacity:0;
+  max-width:600px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  box-shadow:0 4px 20px rgba(0,0,0,0.3);
+}
+#topic-bar.show{transform:translateX(0);opacity:1}
+#topic-label{color:rgba(180,140,255,0.9);font-size:12px;
+  font-weight:400;margin-bottom:2px;letter-spacing:1px}
+
+/* === 字幕（下部） === */
+#subtitle-box{
+  position:fixed;bottom:50px;left:50%;
+  transform:translateX(-50%) translateY(20px);
+  width:auto;max-width:1400px;min-width:200px;
+  padding:14px 32px;
+  background:rgba(10,10,20,0.85);
+  border-radius:14px;
+  border-bottom:2px solid rgba(180,140,255,0.4);
+  color:#fff;font-size:24px;font-weight:400;
+  line-height:1.6;
+  text-align:center;
+  word-wrap:break-word;
+  overflow-wrap:break-word;
+  opacity:0;
+  transition:opacity 0.4s ease, transform 0.4s cubic-bezier(0.22,1,0.36,1);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  box-shadow:0 4px 30px rgba(0,0,0,0.4),
+    0 0 40px rgba(180,140,255,0.08);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  box-shadow:0 4px 30px rgba(0,0,0,0.4);
+  pointer-events:none;
+}
+#subtitle-box.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#subtitle-text{display:inline}
+
+/* ★強調テキスト（YouTuber風ポップアップ） */
+#emphasis-text{
+  position:fixed;top:50%;left:50%;
+  transform:translate(-50%,-50%) scale(0.8);
+  font-size:48px;font-weight:700;
+  color:#fff;
+  text-shadow:0 0 30px rgba(180,140,255,0.6),
+    0 0 60px rgba(180,140,255,0.3),
+    0 2px 4px rgba(0,0,0,0.8);
+  opacity:0;
+  transition:opacity 0.3s ease, transform 0.3s cubic-bezier(0.22,1,0.36,1);
+  pointer-events:none;z-index:20;
+  letter-spacing:2px;
+  white-space:nowrap;
+}
+#emphasis-text.show{
+  opacity:1;transform:translate(-50%,-50%) scale(1);
+}
+/* 【間】【長間】のスタイル */
+.pause-tag{color:rgba(180,140,255,0.6);font-size:14px;
+  font-weight:400;margin:0 4px;vertical-align:middle}
+
+/* === 名前プレート（左下） === */
+#name-plate{
+  position:fixed;bottom:50px;left:30px;
+  padding:6px 18px;
+  background:rgba(20,20,30,0.7);
+  border-radius:8px;
+  border-bottom:3px solid rgba(255,180,200,0.7);
+  color:#fff;font-size:16px;font-weight:700;
+  letter-spacing:1px;
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  box-shadow:0 2px 12px rgba(0,0,0,0.25);
+}
+</style>
+</head>
+<body>
+<!-- 話題テロップ -->
+<div id="topic-bar">
+  <div id="topic-label">TOPIC</div>
+  <div id="topic-text"></div>
+</div>
+<!-- 字幕 -->
+<div id="subtitle-box">
+  <span id="subtitle-text"></span>
+</div>
+<!-- 名前プレート -->
+<div id="name-plate">まお</div>
+<!-- ★強調テキスト（キーフレーズが大きく表示される） -->
+<div id="emphasis-text"></div>
+
+<script>
+const WS_URL = 'ws://127.0.0.1:8765';
+let ws = null;
+let currentTopic = '';
+
+// 話題テロップ
+function showTopic(topic) {
+  if (!topic || topic === currentTopic) return;
+  currentTopic = topic;
+  const bar = document.getElementById('topic-bar');
+  const text = document.getElementById('topic-text');
+  // 一旦隠す
+  bar.classList.remove('show');
+  setTimeout(() => {
+    // 長すぎる話題は短縮
+    let display = topic;
+    if (display.length > 30) {
+      display = display.substring(0, 30) + '...';
+    }
+    text.textContent = display;
+    bar.classList.add('show');
+  }, 300);
+}
+
+// 感情カラーマップ
+const EMO_COLORS = {
+  joy: 'rgba(255,184,108,0.6)',
+  sadness: 'rgba(123,160,204,0.5)',
+  tension: 'rgba(255,107,107,0.5)',
+  affection: 'rgba(255,159,243,0.5)',
+  calm: 'rgba(180,140,255,0.4)',
+};
+let currentEmoColor = EMO_COLORS.calm;
+let emphasisTimer = null;
+
+// 強調テキスト表示
+function showEmphasis(text) {
+  const el = document.getElementById('emphasis-text');
+  if (emphasisTimer) clearTimeout(emphasisTimer);
+  el.classList.remove('show');
+  setTimeout(() => {
+    el.textContent = text;
+    el.classList.add('show');
+    emphasisTimer = setTimeout(() => el.classList.remove('show'), 2500);
+  }, 50);
+}
+
+// キーフレーズ検出
+function detectEmphasis(text) {
+  // 驚き・強調表現
+  const patterns = [
+    /え[！!]+/,  /まじ[！!？?]/, /やば[！!い]/,
+    /すご[！!い]/, /かわい[！!い]/, /なにそれ/,
+    /ふふ/, /あはは/, /www/,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) return m[0];
+  }
+  // 短い感嘆（10文字以下で！？で終わる）
+  if (text.length < 15 && /[！!？?]$/.test(text)) return text;
+  return null;
+}
+
+// 字幕表示
+function showSubtitle(rawText) {
+  const box = document.getElementById('subtitle-box');
+  const span = document.getElementById('subtitle-text');
+
+  let clean = rawText
+    .replace(/\n+/g, ' ')
+    .replace(/【長間】/g, '')
+    .replace(/【間】/g, '')
+    .trim();
+
+  // フォントサイズを文字数に応じて自動調整
+  if (clean.length > 80) {
+    box.style.fontSize = '18px';
+  } else if (clean.length > 50) {
+    box.style.fontSize = '20px';
+  } else {
+    box.style.fontSize = '24px';
+  }
+
+  // 感情カラーで下ボーダーを変更
+  box.style.borderBottomColor = currentEmoColor;
+
+  span.textContent = clean;
+  box.classList.add('show');
+
+  // キーフレーズを検出して強調表示
+  const emphasis = detectEmphasis(clean);
+  if (emphasis) showEmphasis(emphasis);
+}
+
+// WebSocket接続
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => console.log('Subtitle: WS connected');
+  ws.onclose = () => { setTimeout(connect, 2000); };
+  ws.onerror = () => {};
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      switch (msg.type) {
+        case 'subtitle':
+          showSubtitle(msg.text);
+          if (msg.topic) showTopic(msg.topic);
+          break;
+        case 'topic_change':
+          showTopic(msg.topic);
+          break;
+        case 'state_update':
+          if (msg.emotions) {
+            // 支配的感情を判定してカラー変更
+            const emo = msg.emotions;
+            let top = 'calm', topV = 20;
+            const map = {joy:emo.joy||0, sadness:emo.sadness||0,
+              tension:(emo.tension||0)+(emo.anger||0),
+              affection:emo.affection||0};
+            for (const [k,v] of Object.entries(map)) {
+              if (v > topV) { top = k; topV = v; }
+            }
+            currentEmoColor = EMO_COLORS[top] || EMO_COLORS.calm;
+          }
+          break;
+      }
+    } catch(err) {}
+  };
+}
+connect();
+</script>
+</body>
+</html>

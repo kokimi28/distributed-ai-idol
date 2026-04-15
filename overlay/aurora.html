@@ -1,0 +1,325 @@
+<!-- overlay/aurora.html - まおのオーロラ：感情天気システム -->
+<!-- 全画面背景。ambient_bg + neural_core + emotion_orb を統合代替 -->
+<!-- OBS Browser Source: 1920x1080, VTubeの後ろに配置 -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+*{margin:0;padding:0}
+body{overflow:hidden;background:#080810}
+canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const WS='ws://127.0.0.1:8765';
+const C=document.getElementById('c');
+const X=C.getContext('2d');
+const W=C.width=1920,H=C.height=1080;
+let F=0,ws=null;
+
+// === 感情状態 ===
+let emo={joy:40,sadness:0,anger:0,surprise:0,affection:50,
+  fear:0,tension:40,loneliness:0,fatigue:0};
+let tgt={...emo};
+let speaking=false, speakTimer=0;
+let topicBurst=0, commentBurst=0;
+let weatherIntensity=0.5;
+
+// 感情→天気パレット
+const PALETTES={
+  joy:     {bg:[15,12,25],  a:['#FFB86C','#FF9F43','#FECA57','#FEE78A'],ribbonH:35},
+  sadness: {bg:[8,12,22],   a:['#7BA0CC','#5B8DB8','#88B8E0','#A0CCE8'],ribbonH:210},
+  tension: {bg:[18,8,15],   a:['#FF6B6B','#FF4757','#FF7979','#EB4D4B'],ribbonH:355},
+  affection:{bg:[18,10,20], a:['#FF9FF3','#F368E0','#FFC8DD','#FFAFCC'],ribbonH:320},
+  loneliness:{bg:[8,8,18],  a:['#A29BFE','#9B89E6','#7F8BDE','#6C5CE7'],ribbonH:250},
+  calm:    {bg:[10,14,20],  a:['#5DCAA5','#48DBFB','#0ABDE3','#7DCEA0'],ribbonH:170},
+};
+let palette=PALETTES.calm;
+let bgColor=[10,14,20];
+let targetBg=[10,14,20];
+
+function getDominant(){
+  let map={joy:emo.joy,sadness:emo.sadness,tension:emo.tension+emo.anger,
+    affection:emo.affection,loneliness:emo.loneliness};
+  let top='calm',topV=20;
+  for(let[k,v] of Object.entries(map)){if(v>topV){top=k;topV=v;}}
+  return top;
+}
+function lerp(a,b,t){return a+(b-a)*t;}
+function lerpArr(a,b,t){return a.map((v,i)=>lerp(v,b[i],t));}
+
+// === オーロラリボン ===
+class Ribbon{
+  constructor(yBase,amplitude,speed,hueOff){
+    this.yBase=yBase; this.amp=amplitude;
+    this.speed=speed; this.hueOff=hueOff;
+    this.phase=Math.random()*Math.PI*2;
+    this.thickness=40+Math.random()*60;
+    this.alpha=0.08+Math.random()*0.06;
+  }
+  draw(){
+    let h=palette.ribbonH+this.hueOff;
+    let points=[];
+    for(let x=0;x<=W;x+=8){
+      let t=x/W;
+      let wave1=Math.sin(t*3+F*this.speed+this.phase)*this.amp;
+      let wave2=Math.sin(t*5+F*this.speed*0.7+this.phase*1.3)*this.amp*0.4;
+      let wave3=Math.sin(t*1.5+F*this.speed*0.3)*this.amp*0.6;
+      let breath=Math.sin(F*0.008+this.phase)*15;
+      let speakWave=speaking?Math.sin(t*8+F*0.05)*20*speakTimer:0;
+      let y=this.yBase+wave1+wave2+wave3+breath+speakWave;
+      points.push({x,y});
+    }
+
+    let grad=X.createLinearGradient(0,this.yBase-this.thickness,0,this.yBase+this.thickness);
+    let burstAdd=topicBurst*0.15;
+    grad.addColorStop(0,`hsla(${h},60%,60%,0)`);
+    grad.addColorStop(0.3,`hsla(${h},70%,65%,${(this.alpha+burstAdd)*0.5})`);
+    grad.addColorStop(0.5,`hsla(${h},80%,70%,${this.alpha+burstAdd})`);
+    grad.addColorStop(0.7,`hsla(${h},70%,65%,${(this.alpha+burstAdd)*0.5})`);
+    grad.addColorStop(1,`hsla(${h},60%,60%,0)`);
+    X.beginPath();
+    X.moveTo(points[0].x,points[0].y-this.thickness);
+    for(let p of points) X.lineTo(p.x,p.y-this.thickness);
+    for(let i=points.length-1;i>=0;i--) X.lineTo(points[i].x,points[i].y+this.thickness);
+    X.closePath();
+    X.fillStyle=grad;
+    X.fill();
+    X.beginPath();
+    for(let i=0;i<points.length;i++){
+      if(i===0) X.moveTo(points[i].x,points[i].y);
+      else X.lineTo(points[i].x,points[i].y);
+    }
+    X.strokeStyle=`hsla(${h},80%,80%,${this.alpha*1.5+burstAdd})`;
+    X.lineWidth=1.5;
+    X.stroke();
+  }
+}
+let ribbons=[
+  new Ribbon(250,60,0.006,0),
+  new Ribbon(380,45,0.008,-20),
+  new Ribbon(500,55,0.005,15),
+  new Ribbon(650,40,0.007,30),
+  new Ribbon(180,35,0.009,-10),
+];
+
+// === パーティクル ===
+let parts=[];
+class Part{
+  constructor(type,x,y){
+    this.type=type; this.x=x||Math.random()*W*0.7;
+    this.y=y||Math.random()*H;
+    this.vx=0; this.vy=0;
+    this.size=1+Math.random()*3;
+    this.alpha=0; this.maxAlpha=0.3+Math.random()*0.5;
+    this.life=200+Math.random()*400;
+    this.age=0; this.phase=Math.random()*6.28;
+    if(type==='firefly'){
+      this.vx=(Math.random()-0.5)*0.3;
+      this.vy=(Math.random()-0.5)*0.2;
+      this.size=2+Math.random()*3;
+    }else if(type==='rain'){
+      this.vy=2+Math.random()*3;
+      this.vx=-0.5-Math.random()*0.5;
+      this.size=1; this.maxAlpha=0.15+Math.random()*0.15;
+      this.life=120;
+    }else if(type==='spark'){
+      let a=Math.random()*6.28;
+      this.vx=Math.cos(a)*(1+Math.random()*3);
+      this.vy=Math.sin(a)*(1+Math.random()*3);
+      this.size=1.5+Math.random()*2;
+      this.maxAlpha=0.7+Math.random()*0.3;
+      this.life=40+Math.random()*60;
+    }else if(type==='star'){
+      this.vy=-0.1-Math.random()*0.2;
+      this.vx=(Math.random()-0.5)*0.1;
+      this.size=1+Math.random()*2;
+      this.maxAlpha=0.2+Math.random()*0.4;
+      this.life=300+Math.random()*300;
+    }else if(type==='burst'){
+      let a=Math.random()*6.28;
+      let sp=2+Math.random()*5;
+      this.vx=Math.cos(a)*sp; this.vy=Math.sin(a)*sp;
+      this.size=2+Math.random()*4;
+      this.maxAlpha=0.8; this.life=50+Math.random()*50;
+    }
+  }
+
+  update(){
+    this.x+=this.vx; this.y+=this.vy; this.age++;
+    if(this.type==='firefly'){
+      this.vx+=(Math.random()-0.5)*0.05;
+      this.vy+=(Math.random()-0.5)*0.05;
+      this.vx*=0.99; this.vy*=0.99;
+    }
+    if(this.type==='spark'){this.vx*=0.96;this.vy*=0.96;this.vy+=0.03;}
+    if(this.type==='burst'){this.vx*=0.95;this.vy*=0.95;}
+    let fadeIn=Math.min(1,this.age/20);
+    let fadeOut=Math.max(0,1-(this.age-this.life*0.7)/(this.life*0.3));
+    this.alpha=this.maxAlpha*fadeIn*fadeOut;
+  }
+  draw(){
+    let col=palette.a[Math.floor(this.phase*10)%palette.a.length];
+    if(this.type==='rain') col=palette.a[1];
+    X.globalAlpha=Math.max(0,this.alpha);
+    if(this.type==='firefly'){
+      let gr=X.createRadialGradient(this.x,this.y,0,this.x,this.y,this.size*4);
+      gr.addColorStop(0,col);
+      gr.addColorStop(0.4,col.replace(')',',0.3)').replace('rgb','rgba'));
+      gr.addColorStop(1,'rgba(0,0,0,0)');
+      X.fillStyle=gr;
+      X.fillRect(this.x-this.size*4,this.y-this.size*4,this.size*8,this.size*8);
+    }else if(this.type==='rain'){
+      X.strokeStyle=col; X.lineWidth=0.8;
+      X.beginPath(); X.moveTo(this.x,this.y);
+      X.lineTo(this.x+this.vx*3,this.y+this.vy*3); X.stroke();
+    }else{
+      X.beginPath(); X.arc(this.x,this.y,this.size,0,6.28);
+      X.fillStyle=col; X.fill();
+    }
+    X.globalAlpha=1;
+  }
+  get dead(){return this.age>this.life||this.x<-20||this.x>W+20||this.y<-20||this.y>H+20;}
+}
+
+// === 天気システム（感情に応じてパーティクルを生成） ===
+function spawnWeather(){
+  if(parts.length>300) return;
+  let dom=getDominant();
+  if(dom==='joy'||dom==='affection'){
+    if(Math.random()<0.15) parts.push(new Part('firefly'));
+  }
+  if(dom==='sadness'||dom==='loneliness'){
+    if(Math.random()<0.3) parts.push(new Part('rain',Math.random()*W,0));
+  }
+  if(dom==='tension'){
+    if(Math.random()<0.05){
+      let sx=Math.random()*W*0.7,sy=Math.random()*H;
+      for(let i=0;i<3;i++) parts.push(new Part('spark',sx,sy));
+    }
+  }
+  if(Math.random()<0.05) parts.push(new Part('star'));
+}
+
+// === 話題変更カスケード ===
+function triggerTopicCascade(){
+  topicBurst=1.0;
+  for(let i=0;i<40;i++){
+    parts.push(new Part('burst',W*0.35,H*0.45));
+  }
+}
+
+// === コメントバースト ===
+function triggerCommentBurst(){
+  commentBurst=1.0;
+  let edge=Math.random()<0.5?0:W;
+  let ey=200+Math.random()*600;
+  for(let i=0;i<20;i++){
+    parts.push(new Part('burst',edge,ey));
+  }
+}
+
+// === 発話開始 ===
+function onSpeak(){
+  speaking=true; speakTimer=1.0;
+  for(let i=0;i<8;i++) parts.push(new Part('firefly',W*0.6+Math.random()*200,H*0.4+Math.random()*200));
+}
+
+// === メイン描画 ===
+function render(){
+  F++;
+  for(let k of Object.keys(emo)) if(tgt[k]!==undefined) emo[k]=lerp(emo[k],tgt[k],0.02);
+  let dom=getDominant();
+  let p=PALETTES[dom]||PALETTES.calm;
+  palette=p; targetBg=p.bg;
+  bgColor=lerpArr(bgColor,targetBg,0.01);
+  topicBurst*=0.97; commentBurst*=0.96;
+  if(speaking){speakTimer*=0.992; if(speakTimer<0.05){speaking=false;speakTimer=0;}}
+
+  // 背景クリア（感情色）
+  X.fillStyle=`rgb(${Math.round(bgColor[0])},${Math.round(bgColor[1])},${Math.round(bgColor[2])})`;
+  X.fillRect(0,0,W,H);
+
+  // 画面全体のやわらかいビネット
+  let vig=X.createRadialGradient(W*0.45,H*0.45,H*0.3,W*0.5,H*0.5,H*0.9);
+  vig.addColorStop(0,'rgba(0,0,0,0)');
+  vig.addColorStop(1,'rgba(0,0,0,0.4)');
+  X.fillStyle=vig;
+  X.fillRect(0,0,W,H);
+
+  // 感情の大気光（画面中央〜左にやわらかい光）
+  let atmoR=300+Math.sin(F*0.01)*50+topicBurst*100;
+  let atmo=X.createRadialGradient(W*0.35,H*0.45,0,W*0.35,H*0.45,atmoR);
+  let h=p.ribbonH;
+  atmo.addColorStop(0,`hsla(${h},50%,50%,${0.06+topicBurst*0.08})`);
+  atmo.addColorStop(0.5,`hsla(${h},40%,40%,${0.02+topicBurst*0.03})`);
+  atmo.addColorStop(1,`hsla(${h},30%,30%,0)`);
+  X.fillStyle=atmo;
+  X.fillRect(0,0,W,H);
+
+  // 発話時のリップル（右側、アバター付近から）
+  if(speaking&&speakTimer>0.1){
+    let ripR=100+(1-speakTimer)*500;
+    let ripA=speakTimer*0.08;
+    X.beginPath();
+    X.arc(W*0.75,H*0.5,ripR,0,6.28);
+    X.strokeStyle=`hsla(${h},60%,70%,${ripA})`;
+    X.lineWidth=2;
+    X.stroke();
+    let ripR2=ripR*0.6;
+    X.beginPath();
+    X.arc(W*0.75,H*0.5,ripR2,0,6.28);
+    X.strokeStyle=`hsla(${h},50%,65%,${ripA*0.6})`;
+    X.lineWidth=1;
+    X.stroke();
+  }
+
+  // オーロラリボン
+  for(let r of ribbons) r.draw();
+
+  // パーティクル
+  spawnWeather();
+  for(let p of parts){p.update();p.draw();}
+  parts=parts.filter(p=>!p.dead);
+
+  // 話題バースト時のフラッシュ
+  if(topicBurst>0.3){
+    X.fillStyle=`hsla(${h},60%,80%,${(topicBurst-0.3)*0.08})`;
+    X.fillRect(0,0,W,H);
+  }
+
+  requestAnimationFrame(render);
+}
+
+// === WebSocket ===
+function connect(){
+  ws=new WebSocket(WS);
+  ws.onopen=()=>console.log('Aurora: connected');
+  ws.onclose=()=>setTimeout(connect,2000);
+  ws.onerror=()=>{};
+  ws.onmessage=(e)=>{
+    try{
+      let m=JSON.parse(e.data);
+      if(m.type==='state_update'){
+        tgt=m.emotions||tgt;
+      }
+      else if(m.type==='subtitle'){
+        onSpeak();
+      }
+      else if(m.type==='topic_change'){
+        triggerTopicCascade();
+      }
+      else if(m.type==='comment_event'){
+        triggerCommentBurst();
+      }
+    }catch(err){}
+  };
+}
+connect();
+render();
+</script>
+</body>
+</html>

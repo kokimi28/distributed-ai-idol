@@ -1,0 +1,125 @@
+<!-- overlay/debug_viewer.html - OBS Browser Source デバッグビューア -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Overlay Debug</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:'Segoe UI',sans-serif;padding:16px;font-size:13px}
+h1{font-size:16px;color:#888;margin-bottom:12px}
+.st{padding:4px 10px;border-radius:6px;display:inline-block;margin-bottom:12px;font-size:12px}
+.on{background:#1a3a1a;color:#4ade80}.off{background:#3a1a1a;color:#f87171}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.p{background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:12px}
+.p h2{font-size:13px;color:#888;margin-bottom:8px}
+.bw{display:flex;align-items:center;gap:6px;margin:3px 0}
+.bl{width:70px;font-size:11px;color:#aaa;text-align:right}
+.bg{flex:1;height:14px;background:#222;border-radius:3px;overflow:hidden}
+.bf{height:100%;border-radius:3px;transition:width .5s,background .5s}
+.tt{font-size:15px;color:#fff;font-weight:500}
+.pb{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;margin-left:8px;background:#333}
+.ht{font-size:12px;color:#f59e0b;margin-top:4px}
+.el{max-height:220px;overflow-y:auto;font-size:11px;font-family:monospace}
+.el div{padding:2px 0;border-bottom:1px solid #222}
+</style>
+</head>
+<body>
+<h1>mao overlay debug</h1>
+<div id="conn" class="st off">disconnected</div>
+
+<div class="grid">
+  <div class="p">
+    <h2>emotions</h2>
+    <div id="emotions"></div>
+  </div>
+  <div class="p">
+    <h2>topic</h2>
+    <div id="topic-name" class="tt">-</div>
+    <div id="topic-phase"></div>
+    <div id="topic-heat" class="ht"></div>
+  </div>
+  <div class="p">
+    <h2>clock</h2>
+    <div id="clock">-</div>
+  </div>
+  <div class="p">
+    <h2>event log</h2>
+    <div id="events" class="el"></div>
+  </div>
+</div>
+
+<script>
+const WS_URL = 'ws://127.0.0.1:8765';
+const EMOTIONS = ['joy','sadness','anger','surprise','embarrass','fear','affection','fatigue','tension','loneliness'];
+const COLORS = {joy:'#facc15',sadness:'#60a5fa',anger:'#ef4444',surprise:'#f472b6',embarrass:'#c084fc',fear:'#a78bfa',affection:'#fb923c',fatigue:'#6b7280',tension:'#f87171',loneliness:'#818cf8'};
+let ws = null;
+let reconnectTimer = null;
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => {
+    document.getElementById('conn').className = 'st on';
+    document.getElementById('conn').textContent = 'connected';
+    addEvent('system', 'WebSocket connected');
+  };
+  ws.onclose = () => {
+    document.getElementById('conn').className = 'st off';
+    document.getElementById('conn').textContent = 'disconnected';
+    reconnectTimer = setTimeout(connect, 2000);
+  };
+  ws.onerror = () => {};
+  ws.onmessage = (e) => {
+    try { handleMessage(JSON.parse(e.data)); } catch(err) {}
+  };
+}
+
+function handleMessage(msg) {
+  if (msg.type === 'state_update') {
+    updateEmotions(msg.emotions || {});
+    document.getElementById('topic-name').textContent = msg.topic || '-';
+    const pb = document.getElementById('topic-phase');
+    pb.innerHTML = msg.phase ? '<span class="pb">' + msg.phase + '</span>' : '';
+    document.getElementById('topic-heat').textContent = msg.heat ? 'heat: ' + msg.heat : '';
+    let clockText = '';
+    if (msg.elapsed_min !== undefined) clockText += Math.round(msg.elapsed_min) + 'min';
+    if (msg.fatigue !== undefined) clockText += ' | fatigue: ' + msg.fatigue;
+    if (msg.comment_silence_sec !== undefined) clockText += ' | silence: ' + Math.round(msg.comment_silence_sec) + 's';
+    document.getElementById('clock').textContent = clockText || '-';
+  }
+  else if (msg.type === 'comment_event') {
+    addEvent('comment', msg.user_id + ': ' + msg.text + (msg.spike_type ? ' [' + msg.spike_type + '+' + msg.spike_amount + ']' : ''));
+  }
+  else if (msg.type === 'topic_change') {
+    addEvent('topic', 'new topic: ' + msg.topic + (msg.keywords?.length ? ' (' + msg.keywords.join(', ') + ')' : ''));
+  }
+  else if (msg.type === 'phase_change') {
+    addEvent('phase', msg.topic + ' -> ' + msg.phase + ' (heat:' + msg.heat + ')');
+  }
+}
+
+function updateEmotions(emo) {
+  let html = '';
+  for (const e of EMOTIONS) {
+    const v = emo[e] || 0;
+    const c = COLORS[e] || '#888';
+    html += '<div class="bw"><span class="bl">' + e + '</span><div class="bg"><div class="bf" style="width:' + v + '%;background:' + c + '"></div></div><span style="width:28px;text-align:right;font-size:11px;color:' + c + '">' + v + '</span></div>';
+  }
+  document.getElementById('emotions').innerHTML = html;
+}
+
+function addEvent(type, text) {
+  const el = document.getElementById('events');
+  const colors = {comment:'#60a5fa',topic:'#a78bfa',phase:'#34d399',system:'#888'};
+  const d = document.createElement('div');
+  const t = new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  d.style.color = colors[type] || '#888';
+  d.textContent = t + ' [' + type + '] ' + text;
+  el.insertBefore(d, el.firstChild);
+  while (el.children.length > 50) el.removeChild(el.lastChild);
+}
+
+connect();
+</script>
+</body>
+</html>
