@@ -12,6 +12,9 @@ build/
 .env
 firebase-service-account.json
 
+# Secret scanner local cache (contains hashes of scanned local files)
+.cache_ggshield
+
 # IDE
 .vscode/
 .idea/
