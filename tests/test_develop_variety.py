@@ -44,11 +44,14 @@ def test_develop_variety():
     else:
         print("[WARN] DEVELOPが1ターン以下（heat低下が早い）")
 
-    # ヒントに「テーマ」「自由に話す」が含まれることを確認
+    # ヒントに「テーマ」と自由発話の誘導が含まれることを確認
+    # （topic_engine の DEVELOP ヒントは2系統: 「…について自由に話す」と
+    #  「…従わなくていい。自分が一番話したいことを話す」。どちらの文言でも合格とする）
     for h in develop_hints:
         assert 'テーマ' in h, f'DEVELOPヒントに「テーマ」がない: {h[:60]}'
-        assert '自由に話す' in h, f'DEVELOPヒントに「自由に話す」がない: {h[:60]}'
-    print("[OK] DEVELOPヒントに「テーマ」「自由に話す」が含まれる")
+        assert ('自由に話す' in h) or ('自分が一番話したい' in h), \
+            f'DEVELOPヒントに自由発話の誘導がない: {h[:60]}'
+    print("[OK] DEVELOPヒントに「テーマ」と自由発話の誘導が含まれる")
 
     # 旧ヒント「3〜5文」が消えていることを確認
     for h in develop_hints:

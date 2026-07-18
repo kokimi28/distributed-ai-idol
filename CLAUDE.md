@@ -38,14 +38,17 @@ Python **3.12+**（本開発機は 3.13/3.14）。依存は `requirements.txt`�
 
 - **純ロジック系（CI 候補）**: `test_config_store` / `test_big_five` / `test_emotion_carry` / `test_emotion_voice` / `test_develop_variety` / `test_autonomous_talk` / `test_text_parser` / `test_smart_picker` / `test_stream_clock` / `test_reflex` / `test_topic_engine` / `test_duration` 等。
 - **実機・キー・ネットワーク依存（CI 除外）**: `integration/*`（AivisSpeech / VB-Cable / VTube / full pipeline）、`test_youtube_*` / `test_elevenlabs` / `test_kling_debug` / `test_video_api_live` / `test_image_*` / `test_zep_client`、および `gen_*` / `debug_*` / `preflight` / `migrate_*` などの開発スクリプト。
-- **CI 化の既知ブロッカー**: ① `pyaudio` は PortAudio のシステムライブラリが要る（Ubuntu ランナーでは `apt-get install -y portaudio19-dev` を先に）。② 純ロジック系も `shared.config_store` 経由で `loguru` / `python-dotenv` 等を import するため、**`requirements.txt` の一括インストールが前提**（サブセットだけの軽量実行は不可）。③ 実機・キー依存を確実に外すため **pytest marker（例: `@pytest.mark.live` / `hardware`）での仕分け**が必要。
+**CI（unit ティア・`.github/workflows/ci.yml`・2026-07-19 導入）**: 純ロジックテストだけを green にする。ポイント:
+- 純ロジックの実行に要るのは**軽量依存 `loguru` / `python-dotenv` / `pydantic`（＋`pytest`）のみ**。フル依存（`requirements.txt` の `pyaudio`→PortAudio・firebase・grpc 等）は不要。
+- pytest はマーカ選択でも**全テストを import 収集**するため、フル依存が無いと収集段階で実機・キー依存テストが ImportError になる。そこで CI は**検証済みの純ロジックテストを明示列挙**して収集対象を限定する（marker 方式は採らない）。新しい純ロジックテストを足したら ci.yml のリストに追記する。
+- 現在の CI 対象（実測 green・2026-07-19）: `test_text_parser` / `test_stream_clock` / `test_smart_picker` / `test_emotion_carry` / `test_emotion_voice` / `test_big_five` / `test_reflex` / `test_develop_variety`。
+- **実機・キー・ネットワーク依存**（youtube / elevenlabs / kling / video / image / vtube / aivispeech / zep / firebase / LLM 等）は CI 対象外。キー投入（#1）と実機が要る「フル/live ティア」は別途。
 
-推奨の到達形: marker を付与し、CI は `pytest -m "not (live or hardware)"` で純ロジックのみ green にする（キー投入＝#1 env-bootstrap とは独立）。
-
-ローカルで純ロジックを試すには（要フル依存インストール）:
+ローカルで unit ティアを再現:
 ```
-pip install -r requirements.txt pytest
-pytest tests/test_config_store.py tests/test_big_five.py -q
+python -m venv .venv && . .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install loguru python-dotenv pydantic pytest
+pytest tests/test_text_parser.py tests/test_big_five.py -q   # 等、上のリスト
 ```
 
 ## secrets（値に触れない）

@@ -1,0 +1,53 @@
+name: CI
+
+# 純ロジック（unit）ティアのみを CI で green にする（ai-task #4）。
+#
+# 本リポのテストは「純ロジック」と「実機・キー・ネットワーク依存」の混在:
+#   - 実機/キー依存（CI 対象外）: youtube / elevenlabs / kling / video / image /
+#     vtube / aivispeech / zep / firebase / LLM(Claude) 等。キー投入（Issue #1）と
+#     実機が要るため CI では走らせない。
+#   - 純ロジック（本 CI 対象）: パーサ・感情モデル・Big Five・トピックエンジン等。
+#
+# 純ロジックの実行に要るのは軽量依存（loguru / python-dotenv / pydantic）のみで、
+# フル依存（requirements.txt の pyaudio→PortAudio・firebase・grpc 等）は不要。
+# そのため CI は「検証済みの純ロジックテストを明示列挙」して実行する
+# （pytest はマーカ選択でも全テストを import 収集するため、フル依存が無いと
+#  収集段階で ImportError になる。明示列挙で収集対象を純ロジックに限定する）。
+# ここに新しい純ロジックテストを足すときは下のリストに追記する。
+# フル依存・実機込みのティアは別途（#1 env-bootstrap のキー投入後）。
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install unit-tier deps
+        run: pip install --quiet loguru python-dotenv pydantic pytest
+
+      - name: Run pure-logic unit tests
+        run: |
+          pytest -q \
+            tests/test_text_parser.py \
+            tests/test_stream_clock.py \
+            tests/test_smart_picker.py \
+            tests/test_emotion_carry.py \
+            tests/test_emotion_voice.py \
+            tests/test_big_five.py \
+            tests/test_reflex.py \
+            tests/test_develop_variety.py
