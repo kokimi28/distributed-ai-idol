@@ -2,7 +2,7 @@
 
 自律型 AI VTuber 配信システム「まお」。YouTube で AI が自律的にライブ配信する **Python モノリス**（話題選択・感情表現・音声合成・映像生成まで自走）。人間は配信を開始するだけ。
 
-> 標準適用の第一歩（dev-env G9 / Issue #4）。本 CLAUDE.md はリポの構成・検証・秘密の扱いをエージェントが把握するための正本。CI は #4 の続きで整備する（後述の「検証」の注記参照）。
+> 標準適用（dev-env G9 / Issue #4）の正本。本 CLAUDE.md はリポの構成・検証・秘密の扱いをエージェントが把握するためのもの。CI は導入済み（後述の「検証」節）。
 
 ## エントリポイント
 
@@ -60,5 +60,5 @@ pytest tests/test_text_parser.py tests/test_big_five.py -q   # 等、上のリ�
 ## 現況
 
 - **env-bootstrap 進行中**（Issue #1・ブランチ `env-bootstrap`）: コールドスタート→配信可能 の再現・キー投入待ち。手順は `docs/bootstrap.md`。
-- **標準適用中**（Issue #4）: 本 CLAUDE.md が第一歩。CI（純ロジック pytest）は marker 整備後に追加。
+- **標準適用は完了**（Issue #4・2026-07-18 `fd15349`）: 本 CLAUDE.md ＋ CI（純ロジック pytest・`.github/workflows/ci.yml`）が入り、master で green を実測済み。dev-env の適用基準では dormant リポの標準は **CLAUDE.md のみが最小**（`template-adoption-guide.md` §適用優先度）なので、CI がある本リポは基準を満たしている。**marker 方式は採らなかった**（上の「検証」節の理由＝pytest はマーカ選択でも全テストを import 収集するため、フル依存が無いと収集段階で落ちる）。
 - 命名は旧「distributed」構想の名残だが実態は単機のモノリシック配信アプリ（dev-env の命名規約対象外・改名しない）。
