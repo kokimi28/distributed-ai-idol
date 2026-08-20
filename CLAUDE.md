@@ -51,6 +51,17 @@ pip install loguru python-dotenv pydantic pytest
 pytest tests/test_text_parser.py tests/test_big_five.py -q   # 等、上のリスト
 ```
 
+### リモート/クラウドセッション運用（claude.ai/code・スマホ発）
+
+`CLAUDE_CODE_REMOTE=true` のとき、claude.ai/code のクラウドコンテナ（Linux）で実行されている。ローカルの個人設定（`~/.claude/`・ユーザー MCP）・実機（AivisSpeech / VB-Cable / VTube）・キー（`.env`）は届かない前提で、以下の縮退規約に従う。
+
+- **止まらない**: 検証手段が無いことを理由に作業を中断しない。実装 → 実行可能な検証をすべて実行 → push → draft PR 作成 → CI green まで追走、が完了の定義。
+- **unit ティアは全部リモートで実行可能**: 上記「ローカルで unit ティアを再現」と同じ手順（venv + 軽量依存4つ）で、CI（`.github/workflows/ci.yml`）と同一の純ロジックテスト列挙を必ず実行する。コンテナでは `uv venv --python 3.12 .venv` → `uv pip install loguru python-dotenv pydantic pytest --python .venv/bin/python` が高速な代替になる（uv 同梱・`uv.lock` は作らない）。
+- **実機・キー・ネットワーク依存はリモート不可**: youtube / elevenlabs / kling / video / image / vtube / aivispeech / zep / firebase / LLM 系のテスト・スクリプトは実行できない → PR 本文の「未検証項目」に列挙する（黙って省略しない）。
+- **secrets 非接触**: `.env` はこの環境に無い（値の要求・推測・生成をしない）。キー投入は 👤 専任（Issue #1）。
+- 純ロジックテストを追加したら ci.yml のリストに追記する（既存規約どおり）。
+- **スマホからのキック**: 起票・依頼の定型は dev-env `docs/prompts/mobile-kick.md` を使う（完了条件込みの1メッセージで渡す）。
+
 ## secrets（値に触れない）
 
 - **キーの値はコード・コミット・Issue・PR・ログに一切書かない**（扱うのはキー名のみ）。正本は claude-ops の GOVERNANCE.md。
