@@ -53,7 +53,7 @@ pytest tests/test_text_parser.py tests/test_big_five.py -q   # 等、上のリ�
 
 ### リモート/クラウドセッション運用（claude.ai/code・スマホ発）
 
-`CLAUDE_CODE_REMOTE=true` のとき、claude.ai/code のクラウドコンテナ（Linux）で実行されている。ローカルの個人設定（`~/.claude/`・ユーザー MCP）・実機（AivisSpeech / VB-Cable / VTube）・キー（`.env`）は届かない前提で、以下の縮退規約に従う。
+`CLAUDE_CODE_REMOTE=true` のとき、claude.ai/code のクラウドコンテナ（Linux）で実行されている。SessionStart hook（`.claude/hooks/session_start.py`）が unit ティアの軽量依存導入（`uv venv --python 3.12` ＋ loguru / python-dotenv / pydantic / pytest）と環境診断（preflight）を行い、`.venv/bin` を PATH に注入して結果をセッション冒頭に出力する。ローカルの個人設定（`~/.claude/`・ユーザー MCP）・実機（AivisSpeech / VB-Cable / VTube）・キー（`.env`）は届かない前提で、以下の縮退規約に従う。
 
 - **止まらない**: 検証手段が無いことを理由に作業を中断しない。実装 → 実行可能な検証をすべて実行 → push → draft PR 作成 → CI green まで追走、が完了の定義。
 - **unit ティアは全部リモートで実行可能**: 上記「ローカルで unit ティアを再現」と同じ手順（venv + 軽量依存4つ）で、CI（`.github/workflows/ci.yml`）と同一の純ロジックテスト列挙を必ず実行する。コンテナでは `uv venv --python 3.12 .venv` → `uv pip install loguru python-dotenv pydantic pytest --python .venv/bin/python` が高速な代替になる（uv 同梱・`uv.lock` は作らない）。
